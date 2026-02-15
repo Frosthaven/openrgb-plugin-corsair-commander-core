@@ -7,9 +7,9 @@
 
 # OpenRGB Plugin: Corsair Commander Core
 
-An [OpenRGB](https://openrgb.org/) plugin for controlling RGB lighting on devices
-connected to **Corsair Commander Core** controllers — including the Capellix and
-Capellix XT series AIO liquid CPU coolers.
+An [OpenRGB](https://openrgb.org/) plugin that replaces OpenRGB's implementation
+of the Corsair Commander Core controllers by including support for the Capellix
+and Capellix XT series AIO liquid CPU coolers.
 
 ## Quick Start
 
