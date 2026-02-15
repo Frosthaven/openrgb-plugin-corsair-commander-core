@@ -71,7 +71,7 @@ jobs:
         if: matrix.native
         run: |
           export OPENRGB_DIR=${{ github.workspace }}/OpenRGB
-          qmake CorsairCapellixXT.pro
+          qmake CorsairCommanderCore.pro
           make -j$(nproc)
 
       # --- QEMU ARM ---
@@ -90,14 +90,14 @@ jobs:
               pkgconf findutils
           run: |
             export OPENRGB_DIR=${{ github.workspace }}/OpenRGB
-            qmake CorsairCapellixXT.pro
+            qmake CorsairCommanderCore.pro
             make -j$(nproc)
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenRGBCorsairCapellixXTPlugin-linux-${{ matrix.label }}
-          path: libOpenRGBCorsairCapellixXTPlugin.so
+          name: OpenRGBCorsairCommanderCorePlugin-linux-${{ matrix.label }}
+          path: libOpenRGBCorsairCommanderCorePlugin.so
 
   # ---------------------------------------------------------------------------
   # Windows x86_64 (MSYS2 / MinGW-w64)
@@ -138,22 +138,22 @@ jobs:
         shell: msys2 {0}
         run: |
           export OPENRGB_DIR=$(cygpath -u '${{ github.workspace }}/OpenRGB')
-          qmake-qt5 CorsairCapellixXT.pro
+          qmake-qt5 CorsairCommanderCore.pro
           make -j$(nproc)
 
       - name: Collect artifact
         shell: msys2 {0}
         run: |
           # qmake on MinGW may place DLL in release/ or current dir
-          if [ -f release/OpenRGBCorsairCapellixXTPlugin.dll ]; then
-            cp release/OpenRGBCorsairCapellixXTPlugin.dll .
+          if [ -f release/OpenRGBCorsairCommanderCorePlugin.dll ]; then
+            cp release/OpenRGBCorsairCommanderCorePlugin.dll .
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenRGBCorsairCapellixXTPlugin-windows-x86_64
-          path: OpenRGBCorsairCapellixXTPlugin.dll
+          name: OpenRGBCorsairCommanderCorePlugin-windows-x86_64
+          path: OpenRGBCorsairCommanderCorePlugin.dll
 
   # ---------------------------------------------------------------------------
   # macOS (arm64 Apple Silicon + x86_64 Intel)
@@ -190,14 +190,14 @@ jobs:
         run: |
           export OPENRGB_DIR=${{ github.workspace }}/OpenRGB
           export PKG_CONFIG_PATH="$(brew --prefix hidapi)/lib/pkgconfig:$(brew --prefix qt@5)/lib/pkgconfig:$PKG_CONFIG_PATH"
-          qmake CorsairCapellixXT.pro
+          qmake CorsairCommanderCore.pro
           make -j$(sysctl -n hw.ncpu)
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenRGBCorsairCapellixXTPlugin-macos-${{ matrix.label }}
-          path: libOpenRGBCorsairCapellixXTPlugin.dylib
+          name: OpenRGBCorsairCommanderCorePlugin-macos-${{ matrix.label }}
+          path: libOpenRGBCorsairCommanderCorePlugin.dylib
 
   # ---------------------------------------------------------------------------
   # Draft release with all artifacts

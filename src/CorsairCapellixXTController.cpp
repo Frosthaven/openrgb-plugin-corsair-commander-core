@@ -11,20 +11,27 @@ CorsairCapellixXTController::CorsairCapellixXTController(hid_device* dev, const 
 {
     /*-------------------------------------------------------------*\
     | Buffer sizes based on product ID                              |
-    |   0x0C1C (Commander Core original) = 96-byte buffers          |
-    |   0x0C32 (Commander ST / newer)    = 64-byte buffers          |
+    |   0x0C32 (Commander Core 2 / ST)  = 64-byte buffers           |
+    |   0x0C2A (Commander Core XT)      = 384-byte buffers          |
+    |   All others                      = 96-byte buffers           |
     \*-------------------------------------------------------------*/
-    if(product_id == COMMANDER_CORE_PID)
-    {
-        buffer_size         = 96;
-        write_buffer_size   = 97;
-        max_buf_per_request = 93;
-    }
-    else
+    if(product_id == COMMANDER_CORE2_PID)
     {
         buffer_size         = 64;
         write_buffer_size   = 65;
         max_buf_per_request = 61;
+    }
+    else if(product_id == COMMANDER_CORE_XT_PID)
+    {
+        buffer_size         = 384;
+        write_buffer_size   = 385;
+        max_buf_per_request = 381;
+    }
+    else
+    {
+        buffer_size         = 96;
+        write_buffer_size   = 97;
+        max_buf_per_request = 93;
     }
 
     /*-------------------------------------------------------------*\

@@ -5,12 +5,12 @@ OpenRGBPluginInfo CorsairCapellixXTPlugin::GetPluginInfo()
 {
     OpenRGBPluginInfo info;
 
-    info.Name           = "Corsair CAPELLIX XT";
-    info.Description    = "Adds support for the Corsair iCUE H150i Elite CAPELLIX XT "
-                          "AIO liquid CPU cooler via the Commander Core controller.";
+    info.Name           = "Corsair Commander Core";
+    info.Description    = "Adds support for Corsair Commander Core RGB controllers "
+                          "used in Capellix and Capellix XT series AIO coolers.";
     info.Version        = VERSION_STRING;
     info.Commit         = GIT_COMMIT_ID;
-    info.URL            = "https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt";
+    info.URL            = "https://github.com/Frosthaven/openrgb-plugin-corsair-commander-core";
     info.Icon.load(":/fan.svg");
 
     info.Label          = "";

@@ -15,15 +15,40 @@
 RGBController_CorsairCapellixXT::RGBController_CorsairCapellixXT(CorsairCapellixXTController* ctrl)
     : controller(ctrl)
 {
-    if(controller->GetProductID() == COMMANDER_ST_PID)
+    switch(controller->GetProductID())
     {
-        name                = "Corsair CAPELLIX XT";
-        description         = "Corsair iCUE CAPELLIX XT AIO Liquid CPU Cooler";
-    }
-    else
-    {
-        name                = "Corsair CAPELLIX";
-        description         = "Corsair iCUE CAPELLIX AIO Liquid CPU Cooler";
+        case COMMANDER_CORE_PID:
+            name        = "Corsair Commander Core";
+            description = "Corsair Commander Core RGB Controller";
+            break;
+        case COMMANDER_CORE2_PID:
+            name        = "Corsair Commander Core 2";
+            description = "Corsair Commander Core 2 RGB Controller";
+            break;
+        case COMMANDER_CORE3_PID:
+            name        = "Corsair Commander Core 3";
+            description = "Corsair Commander Core 3 RGB Controller";
+            break;
+        case COMMANDER_CORE4_PID:
+            name        = "Corsair Commander Core 4";
+            description = "Corsair Commander Core 4 RGB Controller";
+            break;
+        case COMMANDER_CORE5_PID:
+            name        = "Corsair Commander Core 5";
+            description = "Corsair Commander Core 5 RGB Controller";
+            break;
+        case COMMANDER_CORE6_PID:
+            name        = "Corsair Commander Core 6";
+            description = "Corsair Commander Core 6 RGB Controller";
+            break;
+        case COMMANDER_CORE_XT_PID:
+            name        = "Corsair Commander Core XT";
+            description = "Corsair Commander Core XT RGB Controller";
+            break;
+        default:
+            name        = "Corsair Commander Core";
+            description = "Corsair Commander Core RGB Controller";
+            break;
     }
 
     vendor                  = "Corsair";

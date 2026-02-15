@@ -1,9 +1,9 @@
 #----------------------------------------------------------------------
-# OpenRGB Plugin: Corsair iCUE H150i Elite CAPELLIX XT
+# OpenRGB Plugin: Corsair Commander Core
 #
 # Build:
 #   export OPENRGB_DIR=/path/to/OpenRGB
-#   qmake CorsairCapellixXT.pro
+#   qmake CorsairCommanderCore.pro
 #   make -j$(nproc)
 #----------------------------------------------------------------------
 
@@ -12,7 +12,7 @@ QT      += svg
 TEMPLATE = lib
 CONFIG  += plugin c++17
 
-TARGET   = OpenRGBCorsairCapellixXTPlugin
+TARGET   = OpenRGBCorsairCommanderCorePlugin
 
 # Version info embedded in the plugin binary
 VERSION_STRING = "0.1.0"

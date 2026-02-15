@@ -5,27 +5,32 @@
 > extensively tested across all hardware revisions or firmware versions. Use at your own
 > risk, and please verify behavior on your specific hardware before relying on it.
 
-# OpenRGB Plugin: Corsair iCUE H150i Elite CAPELLIX XT
+# OpenRGB Plugin: Corsair Commander Core
 
-An [OpenRGB](https://openrgb.org/) plugin for controlling the RGB lighting on the
-**Corsair iCUE H150i Elite CAPELLIX XT** desktop liquid CPU cooler (and compatible
-CAPELLIX-series AIOs).
+An [OpenRGB](https://openrgb.org/) plugin for controlling RGB lighting on devices
+connected to **Corsair Commander Core** controllers — including the Capellix and
+Capellix XT series AIO liquid CPU coolers.
 
 ## Quick Start
 
-1. **Close iCUE** (or any Corsair control software) — it holds an exclusive lock on the
-   USB device.
-
-2. **Download** the plugin for your platform from the
-   [Releases](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/releases)
-   page or the [Actions](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/actions)
+1. **Download** the plugin for your platform from the
+   [Releases](https://github.com/Frosthaven/openrgb-plugin-corsair-commander-core/releases)
+   page or the [Actions](https://github.com/Frosthaven/openrgb-plugin-corsair-commander-core/actions)
    tab (latest build):
 
    | Platform | File |
    |---|---|
-   | Linux | `libOpenRGBCorsairCapellixXTPlugin.so` |
-   | Windows | `OpenRGBCorsairCapellixXTPlugin.dll` |
-   | macOS | `libOpenRGBCorsairCapellixXTPlugin.dylib` |
+   | Linux | `libOpenRGBCorsairCommanderCorePlugin.so` |
+   | Windows | `OpenRGBCorsairCommanderCorePlugin.dll` |
+   | macOS | `libOpenRGBCorsairCommanderCorePlugin.dylib` |
+
+2. **Disable the built-in Commander Core detector** — OpenRGB includes its own
+   Commander Core driver that will conflict with this plugin. Open OpenRGB, go to
+   *Settings* > *Supported Devices*, and **uncheck** both:
+   - `Corsair Commander Core`
+   - `Corsair Commander Core XT`
+
+   Save the settings and restart OpenRGB.
 
 3. **Install** the plugin using one of these methods:
 
@@ -41,61 +46,56 @@ CAPELLIX-series AIOs).
    | Windows | `%APPDATA%\OpenRGB\plugins\` |
    | macOS | `~/.config/OpenRGB/plugins/` |
 
-4. **Disable the built-in Commander Core detector** — OpenRGB includes its own
-   Commander Core driver that will conflict with this plugin. Open OpenRGB, go to
-   *Settings* > *Supported Devices*, and **uncheck** both:
-   - `Corsair Commander Core`
-   - `Corsair Commander Core XT`
-
-   Save the settings and restart OpenRGB.
-
-5. **(Linux only)** Install a udev rule so the device is accessible without root.
+4. **(Linux only)** Install a udev rule so the device is accessible without root.
    Save the
-   [`60-openrgb-corsair-capellix-xt.rules`](https://raw.githubusercontent.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/main/udev/60-openrgb-corsair-capellix-xt.rules)
+   [`60-openrgb-corsair-commander-core.rules`](https://raw.githubusercontent.com/Frosthaven/openrgb-plugin-corsair-commander-core/main/udev/60-openrgb-corsair-commander-core.rules)
    file, then run:
    ```bash
-   sudo cp 60-openrgb-corsair-capellix-xt.rules /etc/udev/rules.d/
+   sudo cp 60-openrgb-corsair-commander-core.rules /etc/udev/rules.d/
    sudo udevadm control --reload-rules && sudo udevadm trigger
    ```
    If the device isn't detected, you may need to unplug and replug the internal USB
    header or reboot for the new permissions to take effect.
 
-6. **Restart OpenRGB** — the CAPELLIX XT should appear in the device list.
+5. **Restart OpenRGB** — the Commander Core device should appear in the device list.
 
 ---
 
 ## Supported Hardware
 
+This plugin supports all Corsair Commander Core controller variants:
+
+| Controller | USB PID | HID Buffer | Common Products |
+|---|---|---|---|
+| Commander Core | `0x0C1C` | 96 bytes | Capellix AIOs (early revisions) |
+| Commander Core 2 | `0x0C32` | 64 bytes | Capellix XT AIOs (2022+) |
+| Commander Core 3 | `0x0C1D` | 96 bytes | |
+| Commander Core 4 | `0x0C3C` | 96 bytes | |
+| Commander Core 5 | `0x0C3D` | 96 bytes | |
+| Commander Core 6 | `0x0C3E` | 96 bytes | |
+| Commander Core XT | `0x0C2A` | 384 bytes | Standalone RGB controller |
+
+- USB Vendor ID: `0x1B1C` (Corsair)
+- Protocol: USB HID (same command set, different buffer sizes per variant)
+
+The Commander Core ships bundled with Corsair Capellix series AIO liquid coolers
+and controls both the pump head RGB and connected fan RGB. The typical setup is:
+
 | Component | LEDs | Channel |
 |---|---|---|
-| Pump head (CAPELLIX RGB) | 33 | 0 |
+| Pump head (Capellix RGB) | 33 | 0 |
 | AF120 RGB Elite Fan 1 | 8 | 1 |
 | AF120 RGB Elite Fan 2 | 8 | 2 |
 | AF120 RGB Elite Fan 3 | 8 | 3 |
 | **Total** | **57** | |
-
-The cooler communicates through the bundled **Corsair Commander Core** controller. Depending
-on manufacturing date, this may be the original Commander Core or the newer Commander ST
-revision:
-
-| Controller | USB PID | HID Buffer | Ships With |
-|---|---|---|---|
-| Commander Core (original) | `0x0C1C` | 96 bytes | Earlier CAPELLIX AIOs |
-| Commander ST (newer) | `0x0C32` | 64 bytes | CAPELLIX XT AIOs (2022+) |
-
-- USB Vendor ID: `0x1B1C` (Corsair)
-- Protocol: USB HID (same command set, different buffer sizes)
-
-This plugin should also work with other CAPELLIX-series AIOs that use the Commander Core
-(H100i, H115i, H170i variants), though only the H150i CAPELLIX XT has been targeted.
 
 ## Building from Source
 
 ### 1. Clone this repository
 
 ```bash
-git clone https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt.git
-cd openrgb-h150i-corsair-capellix-xt
+git clone https://github.com/Frosthaven/openrgb-plugin-corsair-commander-core.git
+cd openrgb-plugin-corsair-commander-core
 ```
 
 ### 2. Set the path to your OpenRGB source tree
@@ -121,23 +121,23 @@ sudo pacman -S qt5-base qt5-svg hidapi libusb mbedtls
 ### 4. Build the plugin
 
 ```bash
-qmake CorsairCapellixXT.pro
+qmake CorsairCommanderCore.pro
 make -j$(nproc)
 ```
 
-This produces `libOpenRGBCorsairCapellixXTPlugin.so`.
+This produces `libOpenRGBCorsairCommanderCorePlugin.so`.
 
 ### 5. Install the plugin
 
 ```bash
 mkdir -p ~/.config/OpenRGB/plugins
-cp libOpenRGBCorsairCapellixXTPlugin.so ~/.config/OpenRGB/plugins/
+cp libOpenRGBCorsairCommanderCorePlugin.so ~/.config/OpenRGB/plugins/
 ```
 
 ### 6. Restart OpenRGB
 
-Launch OpenRGB. The plugin will be loaded automatically and the H150i CAPELLIX XT
-should appear in the device list with four zones (pump head + three fans).
+Launch OpenRGB. The plugin will be loaded automatically and Commander Core devices
+should appear in the device list.
 
 ## CI / Automated Builds
 
@@ -154,7 +154,7 @@ that builds the plugin for all supported platforms:
 | macOS | x86_64 (Intel) | `.dylib` |
 
 Build artifacts can be downloaded from the
-[Actions tab](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/actions).
+[Actions tab](https://github.com/Frosthaven/openrgb-plugin-corsair-commander-core/actions).
 
 When a version tag is pushed (e.g. `git tag v0.1.0 && git push --tags`), the workflow
 also creates a **draft GitHub Release** with all platform binaries attached.
@@ -191,22 +191,15 @@ Colors can be specified as `#RRGGBB` hex or `R,G,B` decimal.
 ## Troubleshooting
 
 **Device not found:**
-- Make sure iCUE (or any other Corsair control software) is not running
-- Check that the Commander Core appears in `lsusb` output:
-  ```
-  Bus xxx Device xxx: ID 1b1c:0c1c Corsair CORSAIR iCUE Commander CORE
-  ```
-  or the newer Commander ST revision:
-  ```
-  Bus xxx Device xxx: ID 1b1c:0c32 Corsair CORSAIR iCUE COMMANDER Core
-  ```
+- Make sure Corsair control software is not running
+- Check that the Commander Core appears in `lsusb` output (look for VID `1b1c`)
 - Verify the udev rules are installed and the device was re-plugged
 
 **Permission denied:**
 - Install the udev rules, or run with `sudo`
 
 **Colors not changing:**
-- The device may be in hardware mode from a previous iCUE session. The script/plugin
+- The device may be in hardware mode from a previous session. The plugin
   sends a software-mode command on init, but you may need to power-cycle the device
 - Check firmware version — the protocol changed between firmware v1.x and v2.x
 
