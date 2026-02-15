@@ -81,14 +81,43 @@ void RGBController_CorsairCapellixXT::ResizeZone(int /*zone*/, int /*new_size*/)
 
 void RGBController_CorsairCapellixXT::DeviceUpdateLEDs()
 {
-    unsigned int total = controller->GetTotalLEDCount();
-    std::vector<uint8_t> color_data(total * 3);
+    /*-----------------------------------------------------------------*\
+    | The Commander Core expects each fan port (zones 1+) to occupy a   |
+    | fixed 34-LED (102-byte) slot in the color buffer, regardless of   |
+    | how many LEDs the fan actually has.  Zone 0 (pump head) is NOT    |
+    | padded — its data is exactly led_count * 3 bytes.                 |
+    |                                                                   |
+    | Layout:                                                           |
+    |   [zone 0: pump LEDs × 3]                                        |
+    |   [zone 1: fan LEDs × 3 + padding to 34 × 3]                    |
+    |   [zone 2: fan LEDs × 3 + padding to 34 × 3]                    |
+    |   ...                                                             |
+    \*-----------------------------------------------------------------*/
+    static const unsigned int LEDS_PER_FAN_SLOT = 34;
 
-    for(unsigned int i = 0; i < total && i < colors.size(); i++)
+    std::vector<ChannelInfo>& ch = controller->GetChannels();
+
+    std::vector<uint8_t> color_data;
+    unsigned int color_idx = 0;
+
+    for(unsigned int zone_idx = 0; zone_idx < ch.size(); zone_idx++)
     {
-        color_data[i * 3 + 0] = RGBGetRValue(colors[i]);
-        color_data[i * 3 + 1] = RGBGetGValue(colors[i]);
-        color_data[i * 3 + 2] = RGBGetBValue(colors[i]);
+        unsigned int led_count = ch[zone_idx].led_count;
+
+        for(unsigned int i = 0; i < led_count && color_idx < colors.size(); i++, color_idx++)
+        {
+            color_data.push_back(RGBGetRValue(colors[color_idx]));
+            color_data.push_back(RGBGetGValue(colors[color_idx]));
+            color_data.push_back(RGBGetBValue(colors[color_idx]));
+        }
+
+        /*-------------------------------------------------------------*\
+        | Pad fan ports (zone > 0) to 34-LED slots                      |
+        \*-------------------------------------------------------------*/
+        if(zone_idx != 0 && led_count < LEDS_PER_FAN_SLOT)
+        {
+            color_data.resize(color_data.size() + (LEDS_PER_FAN_SLOT - led_count) * 3, 0x00);
+        }
     }
 
     controller->SendColors(color_data);

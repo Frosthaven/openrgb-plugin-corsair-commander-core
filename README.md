@@ -41,7 +41,15 @@ CAPELLIX-series AIOs).
    | Windows | `%APPDATA%\OpenRGB\plugins\` |
    | macOS | `~/.config/OpenRGB/plugins/` |
 
-4. **(Linux only)** Install a udev rule so the device is accessible without root.
+4. **Disable the built-in Commander Core detector** — OpenRGB includes its own
+   Commander Core driver that will conflict with this plugin. Open OpenRGB, go to
+   *Settings* > *Supported Devices*, and **uncheck** both:
+   - `Corsair Commander Core`
+   - `Corsair Commander Core XT`
+
+   Save the settings and restart OpenRGB.
+
+5. **(Linux only)** Install a udev rule so the device is accessible without root.
    Save the
    [`60-openrgb-corsair-capellix-xt.rules`](https://raw.githubusercontent.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/main/udev/60-openrgb-corsair-capellix-xt.rules)
    file, then run:
@@ -52,7 +60,7 @@ CAPELLIX-series AIOs).
    If the device isn't detected, you may need to unplug and replug the internal USB
    header or reboot for the new permissions to take effect.
 
-5. **Restart OpenRGB** — the CAPELLIX XT should appear in the device list.
+6. **Restart OpenRGB** — the CAPELLIX XT should appear in the device list.
 
 ---
 

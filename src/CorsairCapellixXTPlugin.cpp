@@ -49,8 +49,12 @@ void CorsairCapellixXTPlugin::Load(ResourceManagerInterface* rm)
 
 QWidget* CorsairCapellixXTPlugin::GetWidget()
 {
-    /* No custom UI widget */
-    return nullptr;
+    /*-----------------------------------------------------------------*\
+    | OpenRGB always passes this widget to OpenRGBPluginContainer which |
+    | calls setParent() on it, so returning nullptr causes a crash.     |
+    | Return an empty widget instead.                                   |
+    \*-----------------------------------------------------------------*/
+    return new QWidget();
 }
 
 QMenu* CorsairCapellixXTPlugin::GetTrayMenu()
