@@ -137,7 +137,7 @@ jobs:
         shell: msys2 {0}
         run: |
           export OPENRGB_DIR=$(cygpath -u '${{ github.workspace }}/OpenRGB')
-          qmake CorsairCapellixXT.pro
+          qmake-qt5 CorsairCapellixXT.pro
           make -j$(nproc)
 
       - name: Collect artifact
