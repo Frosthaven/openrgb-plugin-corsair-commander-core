@@ -11,6 +11,44 @@ An [OpenRGB](https://openrgb.org/) plugin for controlling the RGB lighting on th
 **Corsair iCUE H150i Elite CAPELLIX XT** desktop liquid CPU cooler (and compatible
 CAPELLIX-series AIOs).
 
+## Quick Start
+
+1. **Close iCUE** (or any Corsair control software) — it holds an exclusive lock on the
+   USB device.
+
+2. **Download** the plugin for your platform from the
+   [Releases](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/releases)
+   page or the [Actions](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/actions)
+   tab (latest build):
+
+   | Platform | File |
+   |---|---|
+   | Linux | `libOpenRGBCorsairCapellixXTPlugin.so` |
+   | Windows | `OpenRGBCorsairCapellixXTPlugin.dll` |
+   | macOS | `libOpenRGBCorsairCapellixXTPlugin.dylib` |
+
+3. **Copy** the file into your OpenRGB plugins directory:
+
+   **Linux / macOS**
+   ```bash
+   mkdir -p ~/.config/OpenRGB/plugins
+   cp libOpenRGBCorsairCapellixXTPlugin.so ~/.config/OpenRGB/plugins/
+   ```
+
+   **Windows** — copy `OpenRGBCorsairCapellixXTPlugin.dll` into
+   `%APPDATA%\OpenRGB\plugins\`
+
+4. **(Linux only)** Install the udev rule so the device is accessible without root:
+   ```bash
+   sudo cp udev/60-openrgb-corsair-capellix-xt.rules /etc/udev/rules.d/
+   sudo udevadm control --reload-rules && sudo udevadm trigger
+   ```
+   Then unplug and replug the internal USB header (or reboot).
+
+5. **Restart OpenRGB** — the CAPELLIX XT should appear in the device list.
+
+---
+
 ## Supported Hardware
 
 | Component | LEDs | Channel |
@@ -35,43 +73,6 @@ revision:
 
 This plugin should also work with other CAPELLIX-series AIOs that use the Commander Core
 (H100i, H115i, H170i variants), though only the H150i CAPELLIX XT has been targeted.
-
-## Prerequisites
-
-- [OpenRGB](https://openrgb.org/) (built from source, or a version that supports
-  loading `.so` / `.dll` plugins)
-- Qt 5 development libraries (matching the version OpenRGB was built with)
-- `hidapi` development library
-- A C++17 compiler (GCC 9+ or Clang 10+)
-- **iCUE must not be running** — it holds an exclusive lock on the USB device
-
-### Linux udev Rules
-
-On Linux you need a udev rule so the device is accessible without root. Copy the
-included rule file and reload:
-
-```bash
-sudo cp udev/60-openrgb-corsair-capellix-xt.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
-
-Then unplug and replug the USB header (or reboot).
-
-## Installation (Pre-built)
-
-Pre-built plugin binaries are attached to each
-[GitHub Release](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/releases).
-You can also download the latest build artifact from the
-[Actions tab](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/actions).
-
-1. Download `libOpenRGBCorsairCapellixXTPlugin.so`
-2. Copy it to the OpenRGB plugins directory:
-   ```bash
-   mkdir -p ~/.config/OpenRGB/plugins
-   cp libOpenRGBCorsairCapellixXTPlugin.so ~/.config/OpenRGB/plugins/
-   ```
-3. Restart OpenRGB — the H150i CAPELLIX XT should appear in the device list
 
 ## Building from Source
 
