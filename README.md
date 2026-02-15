@@ -27,23 +27,27 @@ CAPELLIX-series AIOs).
    | Windows | `OpenRGBCorsairCapellixXTPlugin.dll` |
    | macOS | `libOpenRGBCorsairCapellixXTPlugin.dylib` |
 
-3. **Copy** the file into your OpenRGB plugins directory:
+3. **Install** the plugin using one of these methods:
 
-   **Linux / macOS**
-   ```bash
-   mkdir -p ~/.config/OpenRGB/plugins
-   cp libOpenRGBCorsairCapellixXTPlugin.so ~/.config/OpenRGB/plugins/
-   ```
+   **Via OpenRGB UI** — open OpenRGB, go to the *Settings* tab > *Plugins*, click
+   *Install Plugin*, and select the downloaded file. OpenRGB will copy it into its
+   plugins directory for you.
 
-   **Windows** — copy `OpenRGBCorsairCapellixXTPlugin.dll` into
-   `%APPDATA%\OpenRGB\plugins\`
+   **Manual copy** — place the file in the OpenRGB plugins directory yourself:
+
+   | Platform | Plugins directory |
+   |---|---|
+   | Linux | `~/.config/OpenRGB/plugins/` |
+   | Windows | `%APPDATA%\OpenRGB\plugins\` |
+   | macOS | `~/.config/OpenRGB/plugins/` |
 
 4. **(Linux only)** Install the udev rule so the device is accessible without root:
    ```bash
    sudo cp udev/60-openrgb-corsair-capellix-xt.rules /etc/udev/rules.d/
    sudo udevadm control --reload-rules && sudo udevadm trigger
    ```
-   Then unplug and replug the internal USB header (or reboot).
+   If the device isn't detected, you may need to unplug and replug the internal USB
+   header or reboot for the new permissions to take effect.
 
 5. **Restart OpenRGB** — the CAPELLIX XT should appear in the device list.
 
