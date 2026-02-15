@@ -89,23 +89,13 @@ jobs:
           path: libOpenRGBCorsairCapellixXTPlugin.so
 
   # ---------------------------------------------------------------------------
-  # Windows (x86_64 + ARM64)
+  # Windows x86_64 (MSYS2 / MinGW-w64)
+  # Note: ARM64 builds are not possible — GitHub runners are x86_64 and
+  # CLANGARM64 packages contain ARM64 binaries that cannot execute.
   # ---------------------------------------------------------------------------
   build-windows:
-    name: Build (Windows ${{ matrix.label }})
+    name: Build (Windows x86_64)
     runs-on: windows-latest
-    continue-on-error: ${{ matrix.experimental || false }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: x86_64
-            msystem: MINGW64
-            prefix: mingw-w64-x86_64
-          - label: arm64
-            msystem: CLANGARM64
-            prefix: mingw-w64-clang-aarch64
-            experimental: true
 
     steps:
       - name: Checkout plugin source
@@ -121,15 +111,15 @@ jobs:
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{ matrix.msystem }}
+          msystem: MINGW64
           update: true
           install: >-
-            ${{ matrix.prefix }}-toolchain
-            ${{ matrix.prefix }}-qt5-base
-            ${{ matrix.prefix }}-qt5-svg
-            ${{ matrix.prefix }}-hidapi
-            ${{ matrix.prefix }}-libusb
-            ${{ matrix.prefix }}-mbedtls
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-svg
+            mingw-w64-x86_64-hidapi
+            mingw-w64-x86_64-libusb
+            mingw-w64-x86_64-mbedtls
             pkgconf
             make
 
@@ -151,7 +141,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenRGBCorsairCapellixXTPlugin-windows-${{ matrix.label }}
+          name: OpenRGBCorsairCapellixXTPlugin-windows-x86_64
           path: OpenRGBCorsairCapellixXTPlugin.dll
 
   # ---------------------------------------------------------------------------

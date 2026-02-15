@@ -38,11 +38,49 @@ isEmpty(OPENRGB_DIR) {
 
 INCLUDEPATH += $$OPENRGB_DIR
 
-# Dynamically discover directories containing headers in the OpenRGB tree.
-# Uses dirname to extract parent dirs of .h files, avoiding non-source dirs
-# (debian/, Documentation/, .git/) that would clash with system headers.
-# Note: sed is avoided here because qmake's $$system() eats $$ sequences.
-INCLUDEPATH += $$system(find $$OPENRGB_DIR -name \\*.h -exec dirname {} + | sort -u 2>/dev/null)
+# On Unix, dynamically discover directories containing headers.
+# On Windows, $$system() uses cmd.exe where GNU find is unavailable,
+# so we list the required OpenRGB subdirectories explicitly.
+unix {
+    INCLUDEPATH += $$system(find $$OPENRGB_DIR -name \\*.h -exec dirname {} + | sort -u 2>/dev/null)
+}
+
+win32 {
+    # Mirrors the INCLUDEPATH from OpenRGB.pro
+    INCLUDEPATH += \
+        $$OPENRGB_DIR/dependencies/ColorWheel               \
+        $$OPENRGB_DIR/dependencies/CRCpp                    \
+        $$OPENRGB_DIR/dependencies/display-library/include   \
+        $$OPENRGB_DIR/dependencies/hidapi-win/include        \
+        $$OPENRGB_DIR/dependencies/httplib                   \
+        $$OPENRGB_DIR/dependencies/hueplusplus-1.2.0/include \
+        $$OPENRGB_DIR/dependencies/hueplusplus-1.2.0/include/hueplusplus \
+        $$OPENRGB_DIR/dependencies/json                      \
+        $$OPENRGB_DIR/dependencies/libusb-1.0.27/include     \
+        $$OPENRGB_DIR/dependencies/mbedtls-3.2.1/include     \
+        $$OPENRGB_DIR/dependencies/mdns                      \
+        $$OPENRGB_DIR/dependencies/NVFC                      \
+        $$OPENRGB_DIR/dependencies/PawnIO                    \
+        $$OPENRGB_DIR/dependencies/stb                       \
+        $$OPENRGB_DIR/AutoStart                              \
+        $$OPENRGB_DIR/dmiinfo                                \
+        $$OPENRGB_DIR/hidapi_wrapper                         \
+        $$OPENRGB_DIR/i2c_smbus                              \
+        $$OPENRGB_DIR/i2c_smbus/Windows                      \
+        $$OPENRGB_DIR/i2c_tools                              \
+        $$OPENRGB_DIR/interop                                \
+        $$OPENRGB_DIR/KeyboardLayoutManager                  \
+        $$OPENRGB_DIR/net_port                               \
+        $$OPENRGB_DIR/pci_ids                                \
+        $$OPENRGB_DIR/qt                                     \
+        $$OPENRGB_DIR/RGBController                          \
+        $$OPENRGB_DIR/scsiapi                                \
+        $$OPENRGB_DIR/serial_port                            \
+        $$OPENRGB_DIR/SPDAccessor                            \
+        $$OPENRGB_DIR/super_io                               \
+        $$OPENRGB_DIR/SuspendResume                          \
+        $$OPENRGB_DIR/wmi
+}
 
 #----------------------------------------------------------------------
 # hidapi link flags
@@ -57,7 +95,8 @@ macx {
     LIBS += -framework IOKit -framework CoreFoundation
     CONFIG  += link_pkgconfig
     PKGCONFIG += hidapi
-    # Ensure C++17 filesystem support on macOS
+    # <filesystem> requires macOS 10.15+; Qt 5 defaults to 10.13
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
     QMAKE_CXXFLAGS += -std=c++17
 }
 
