@@ -1,0 +1,30 @@
+# Build artifacts
+*.o
+*.so
+*.dll
+*.dylib
+*.a
+Makefile
+moc_*
+*.moc
+ui_*
+qrc_*
+.qmake.stash
+
+# IDE
+.vscode/
+.idea/
+*.pro.user
+*.pro.user.*
+compile_commands.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+test/venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
