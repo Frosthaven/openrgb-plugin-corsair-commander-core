@@ -54,12 +54,76 @@ CorsairCapellixXTController::CorsairCapellixXTController(hid_device* dev, const 
 
 CorsairCapellixXTController::~CorsairCapellixXTController()
 {
+    StopKeepalive();
     SetHardwareMode();
 
     if(dev)
     {
         hid_close(dev);
         dev = nullptr;
+    }
+}
+
+/*---------------------------------------------------------------------*\
+| Keepalive thread — resend colors every 10s so the device doesn't      |
+| revert to hardware lighting mode                                      |
+\*---------------------------------------------------------------------*/
+
+void CorsairCapellixXTController::StartKeepalive()
+{
+    keepalive_thread_run = true;
+    last_commit_time     = std::chrono::steady_clock::now();
+    keepalive_thread     = new std::thread(&CorsairCapellixXTController::KeepaliveThread, this);
+}
+
+void CorsairCapellixXTController::StopKeepalive()
+{
+    if(keepalive_thread)
+    {
+        keepalive_thread_run = false;
+        keepalive_thread->join();
+        delete keepalive_thread;
+        keepalive_thread = nullptr;
+    }
+}
+
+void CorsairCapellixXTController::KeepaliveThread()
+{
+    using namespace std::chrono_literals;
+
+    while(keepalive_thread_run.load())
+    {
+        if((std::chrono::steady_clock::now() - last_commit_time) > 10s)
+        {
+            SendKeepalive();
+        }
+        std::this_thread::sleep_for(1s);
+    }
+}
+
+void CorsairCapellixXTController::SendKeepalive()
+{
+    std::vector<uint8_t> colors_copy;
+
+    {
+        std::lock_guard<std::mutex> lock(color_mutex);
+        colors_copy = last_colors;
+    }
+
+    if(!colors_copy.empty())
+    {
+        /*-------------------------------------------------------------*\
+        | Resend last colors to keep device in software mode            |
+        \*-------------------------------------------------------------*/
+        SendColors(colors_copy);
+    }
+    else
+    {
+        /*-------------------------------------------------------------*\
+        | No colors sent yet — send firmware query as keepalive ping    |
+        \*-------------------------------------------------------------*/
+        Transfer({CMD_GET_FIRMWARE_0, CMD_GET_FIRMWARE_1});
+        last_commit_time = std::chrono::steady_clock::now();
     }
 }
 
@@ -276,6 +340,11 @@ void CorsairCapellixXTController::Initialize()
              {MODE_SET_COLOR});
     Transfer({CMD_OPEN_COLOR_ENDPOINT_0, CMD_OPEN_COLOR_ENDPOINT_1},
              {MODE_SET_COLOR});
+
+    /*-----------------------------------------------------------------*\
+    | Start keepalive thread to prevent revert to hardware lighting     |
+    \*-----------------------------------------------------------------*/
+    StartKeepalive();
 }
 
 /*---------------------------------------------------------------------*\
@@ -296,6 +365,14 @@ void CorsairCapellixXTController::SendColors(const std::vector<uint8_t>& color_d
     if(color_data.empty())
     {
         return;
+    }
+
+    /*-----------------------------------------------------------------*\
+    | Store last colors for keepalive resend                            |
+    \*-----------------------------------------------------------------*/
+    {
+        std::lock_guard<std::mutex> lock(color_mutex);
+        last_colors = color_data;
     }
 
     /*-----------------------------------------------------------------*\
@@ -341,4 +418,6 @@ void CorsairCapellixXTController::SendColors(const std::vector<uint8_t>& color_d
         offset += chunk_size;
         chunk_num++;
     }
+
+    last_commit_time = std::chrono::steady_clock::now();
 }

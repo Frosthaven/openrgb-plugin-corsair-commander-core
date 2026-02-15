@@ -3,6 +3,10 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <atomic>
+#include <thread>
+#include <mutex>
+#include <chrono>
 #include <hidapi.h>
 
 // Commander Core USB identifiers
@@ -108,6 +112,9 @@ public:
     void                        QueryLEDConfig();
     void                        SendColors(const std::vector<uint8_t>& color_data);
 
+    void                        StartKeepalive();
+    void                        StopKeepalive();
+
 private:
     hid_device*                 dev;
     uint16_t                    product_id;
@@ -122,6 +129,18 @@ private:
 
     unsigned int                total_leds;
     std::vector<ChannelInfo>    channels;
+
+    /*-----------------------------------------------------------------*\
+    | Keepalive — resend colors every 10s to prevent hardware revert    |
+    \*-----------------------------------------------------------------*/
+    std::thread*                                keepalive_thread = nullptr;
+    std::atomic<bool>                           keepalive_thread_run{false};
+    std::mutex                                  color_mutex;
+    std::vector<uint8_t>                        last_colors;
+    std::chrono::steady_clock::time_point       last_commit_time;
+
+    void                        KeepaliveThread();
+    void                        SendKeepalive();
 
     /*-----------------------------------------------------------------*\
     | Core transfer: every packet has 0x08 at byte[1]                   |
