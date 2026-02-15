@@ -134,6 +134,7 @@ that builds the plugin for all supported platforms:
 | Linux | arm64 | `.so` |
 | Linux | armhf | `.so` |
 | Windows | x86_64 | `.dll` |
+| Windows | arm64 | `.dll` |
 | macOS | arm64 (Apple Silicon) | `.dylib` |
 | macOS | x86_64 (Intel) | `.dylib` |
 

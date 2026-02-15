@@ -89,11 +89,24 @@ jobs:
           path: libOpenRGBCorsairCapellixXTPlugin.so
 
   # ---------------------------------------------------------------------------
-  # Windows x86_64 (MSYS2 / MinGW-w64)
+  # Windows (x86_64 + ARM64)
   # ---------------------------------------------------------------------------
   build-windows:
-    name: Build (Windows x86_64)
+    name: Build (Windows ${{ matrix.label }})
     runs-on: windows-latest
+    continue-on-error: ${{ matrix.experimental || false }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: x86_64
+            msystem: MINGW64
+            prefix: mingw-w64-x86_64
+          - label: arm64
+            msystem: CLANGARM64
+            prefix: mingw-w64-clang-aarch64
+            experimental: true
+
     steps:
       - name: Checkout plugin source
         uses: actions/checkout@v4
@@ -108,15 +121,15 @@ jobs:
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: ${{ matrix.msystem }}
           update: true
           install: >-
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-qt5-base
-            mingw-w64-x86_64-qt5-svg
-            mingw-w64-x86_64-hidapi
-            mingw-w64-x86_64-libusb
-            mingw-w64-x86_64-mbedtls
+            ${{ matrix.prefix }}-toolchain
+            ${{ matrix.prefix }}-qt5-base
+            ${{ matrix.prefix }}-qt5-svg
+            ${{ matrix.prefix }}-hidapi
+            ${{ matrix.prefix }}-libusb
+            ${{ matrix.prefix }}-mbedtls
             pkgconf
             make
 
@@ -138,7 +151,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenRGBCorsairCapellixXTPlugin-windows-x86_64
+          name: OpenRGBCorsairCapellixXTPlugin-windows-${{ matrix.label }}
           path: OpenRGBCorsairCapellixXTPlugin.dll
 
   # ---------------------------------------------------------------------------

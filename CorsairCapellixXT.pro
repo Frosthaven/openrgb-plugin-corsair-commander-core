@@ -38,10 +38,10 @@ isEmpty(OPENRGB_DIR) {
 
 INCLUDEPATH += $$OPENRGB_DIR
 
-# Dynamically add all subdirectories of the OpenRGB source tree so that
-# transitive includes from ResourceManager.h etc. can be resolved.
-# Works on Linux, macOS, and MSYS2/MinGW (all have Unix find).
-INCLUDEPATH += $$system(find $$OPENRGB_DIR -type d 2>/dev/null)
+# Dynamically discover directories containing headers in the OpenRGB tree.
+# This avoids adding non-source dirs (debian/, Documentation/, .git/) that
+# would break compilation. Works on Linux, macOS, and MSYS2/MinGW.
+INCLUDEPATH += $$system(find $$OPENRGB_DIR -name '*.h' | sed 's|/[^/]*$$||' | sort -u 2>/dev/null)
 
 #----------------------------------------------------------------------
 # hidapi link flags
@@ -56,6 +56,8 @@ macx {
     LIBS += -framework IOKit -framework CoreFoundation
     CONFIG  += link_pkgconfig
     PKGCONFIG += hidapi
+    # Ensure C++17 filesystem support on macOS
+    QMAKE_CXXFLAGS += -std=c++17
 }
 
 win32 {
