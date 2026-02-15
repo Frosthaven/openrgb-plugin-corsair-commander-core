@@ -41,9 +41,12 @@ CAPELLIX-series AIOs).
    | Windows | `%APPDATA%\OpenRGB\plugins\` |
    | macOS | `~/.config/OpenRGB/plugins/` |
 
-4. **(Linux only)** Install the udev rule so the device is accessible without root:
+4. **(Linux only)** Install a udev rule so the device is accessible without root.
+   Save the
+   [`60-openrgb-corsair-capellix-xt.rules`](https://raw.githubusercontent.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/main/udev/60-openrgb-corsair-capellix-xt.rules)
+   file, then run:
    ```bash
-   sudo cp udev/60-openrgb-corsair-capellix-xt.rules /etc/udev/rules.d/
+   sudo cp 60-openrgb-corsair-capellix-xt.rules /etc/udev/rules.d/
    sudo udevadm control --reload-rules && sudo udevadm trigger
    ```
    If the device isn't detected, you may need to unplug and replug the internal USB
