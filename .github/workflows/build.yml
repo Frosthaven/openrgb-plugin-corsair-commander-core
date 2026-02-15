@@ -2,18 +2,7 @@ name: Build Plugin
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - 'udev/**'
-  pull_request:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - 'udev/**'
 
 env:
   OPENRGB_TAG: release_candidate_1.0rc2
