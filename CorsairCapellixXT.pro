@@ -17,10 +17,8 @@ TARGET   = OpenRGBCorsairCapellixXTPlugin
 # Version info embedded in the plugin binary
 VERSION_STRING = "0.1.0"
 GIT_COMMIT_ID  = $$system(git rev-parse --short=8 HEAD)
-GIT_COMMIT_DATE = $$system(git log -n 1 --pretty=format:"%ci")
 DEFINES += VERSION_STRING=\\\"$$VERSION_STRING\\\"
 DEFINES += GIT_COMMIT_ID=\\\"$$GIT_COMMIT_ID\\\"
-DEFINES += GIT_COMMIT_DATE=\\\"$$GIT_COMMIT_DATE\\\"
 
 #----------------------------------------------------------------------
 # OpenRGB source tree (set via environment or override here)
@@ -34,18 +32,19 @@ isEmpty(OPENRGB_DIR) {
     error("OPENRGB_DIR is not set. Point it at your OpenRGB source checkout.")
 }
 
-INCLUDEPATH += \
-    $$OPENRGB_DIR                                           \
-    $$OPENRGB_DIR/RGBController                             \
-    $$OPENRGB_DIR/ResourceManager                           \
-    $$OPENRGB_DIR/plugins                                   \
-    $$OPENRGB_DIR/dependencies/hidapi-0.14.0/hidapi         \
-    $$OPENRGB_DIR/dependencies/hidapi                       \
-    $$OPENRGB_DIR/i2c_smbus                                 \
-    $$OPENRGB_DIR/net_port
+#----------------------------------------------------------------------
+# Include paths — OpenRGB headers and all internal subdirectories
+#----------------------------------------------------------------------
+
+INCLUDEPATH += $$OPENRGB_DIR
+
+# Dynamically add all subdirectories of the OpenRGB source tree so that
+# transitive includes from ResourceManager.h etc. can be resolved.
+# Works on Linux, macOS, and MSYS2/MinGW (all have Unix find).
+INCLUDEPATH += $$system(find $$OPENRGB_DIR -type d 2>/dev/null)
 
 #----------------------------------------------------------------------
-# hidapi link flags (Linux)
+# hidapi link flags
 #----------------------------------------------------------------------
 
 unix:!macx {
@@ -55,7 +54,8 @@ unix:!macx {
 
 macx {
     LIBS += -framework IOKit -framework CoreFoundation
-    LIBS += -lhidapi
+    CONFIG  += link_pkgconfig
+    PKGCONFIG += hidapi
 }
 
 win32 {

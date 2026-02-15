@@ -11,29 +11,15 @@ env:
   OPENRGB_TAG: release_candidate_1.0rc2
 
 jobs:
-  build-linux:
+  # ---------------------------------------------------------------------------
+  # Linux x86_64 (native)
+  # ---------------------------------------------------------------------------
+  build-linux-x86_64:
     name: Build (Linux x86_64)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout plugin source
         uses: actions/checkout@v4
-
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            qtbase5-dev \
-            qtbase5-dev-tools \
-            qtchooser \
-            qt5-qmake \
-            qttools5-dev-tools \
-            libqt5svg5-dev \
-            libusb-1.0-0-dev \
-            libhidapi-dev \
-            libmbedtls-dev \
-            pkgconf
 
       - name: Checkout OpenRGB source
         uses: actions/checkout@v4
@@ -42,43 +28,207 @@ jobs:
           ref: ${{ env.OPENRGB_TAG }}
           path: OpenRGB
 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential qtbase5-dev qtbase5-dev-tools qt5-qmake \
+            libqt5svg5-dev libusb-1.0-0-dev libhidapi-dev libmbedtls-dev \
+            pkgconf
+
       - name: Build plugin
         run: |
           export OPENRGB_DIR=${{ github.workspace }}/OpenRGB
           qmake CorsairCapellixXT.pro
           make -j$(nproc)
 
-      - name: Prepare artifact
-        run: |
-          mkdir -p dist
-          cp libOpenRGBCorsairCapellixXTPlugin.so dist/
-          echo "${{ github.sha }}" > dist/commit.txt
-
-      - name: Upload build artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: OpenRGBCorsairCapellixXTPlugin-linux-x86_64
-          path: dist/libOpenRGBCorsairCapellixXTPlugin.so
+          path: libOpenRGBCorsairCapellixXTPlugin.so
 
+  # ---------------------------------------------------------------------------
+  # Linux ARM (QEMU emulation)
+  # ---------------------------------------------------------------------------
+  build-linux-arm:
+    name: Build (Linux ${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            distro: ubuntu_latest
+            label: arm64
+          - arch: armv7
+            distro: ubuntu_latest
+            label: armhf
+
+    steps:
+      - name: Checkout plugin source
+        uses: actions/checkout@v4
+
+      - name: Checkout OpenRGB source
+        uses: actions/checkout@v4
+        with:
+          repository: CalcProgrammer1/OpenRGB
+          ref: ${{ env.OPENRGB_TAG }}
+          path: OpenRGB
+
+      - name: Build on ${{ matrix.arch }}
+        uses: uraimo/run-on-arch-action@v3
+        with:
+          arch: ${{ matrix.arch }}
+          distro: ${{ matrix.distro }}
+          githubToken: ${{ github.token }}
+          install: |
+            apt-get update -q -y
+            apt-get install -q -y \
+              build-essential qtbase5-dev qtbase5-dev-tools qt5-qmake \
+              libqt5svg5-dev libusb-1.0-0-dev libhidapi-dev libmbedtls-dev \
+              pkgconf findutils
+          run: |
+            export OPENRGB_DIR=${{ github.workspace }}/OpenRGB
+            qmake CorsairCapellixXT.pro
+            make -j$(nproc)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenRGBCorsairCapellixXTPlugin-linux-${{ matrix.label }}
+          path: libOpenRGBCorsairCapellixXTPlugin.so
+
+  # ---------------------------------------------------------------------------
+  # Windows x86_64 (MSYS2 / MinGW-w64)
+  # ---------------------------------------------------------------------------
+  build-windows:
+    name: Build (Windows x86_64)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout plugin source
+        uses: actions/checkout@v4
+
+      - name: Checkout OpenRGB source
+        uses: actions/checkout@v4
+        with:
+          repository: CalcProgrammer1/OpenRGB
+          ref: ${{ env.OPENRGB_TAG }}
+          path: OpenRGB
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-svg
+            mingw-w64-x86_64-hidapi
+            mingw-w64-x86_64-libusb
+            mingw-w64-x86_64-mbedtls
+            pkgconf
+            make
+
+      - name: Build plugin
+        shell: msys2 {0}
+        run: |
+          export OPENRGB_DIR=$(cygpath -u '${{ github.workspace }}/OpenRGB')
+          qmake CorsairCapellixXT.pro
+          make -j$(nproc)
+
+      - name: Find and upload artifact
+        shell: msys2 {0}
+        run: |
+          # qmake on MinGW may place output in release/ or current dir
+          find . -name "*.dll" -path "*/OpenRGBCorsairCapellixXTPlugin*" \
+            -exec cp {} OpenRGBCorsairCapellixXTPlugin.dll \;
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenRGBCorsairCapellixXTPlugin-windows-x86_64
+          path: OpenRGBCorsairCapellixXTPlugin.dll
+
+  # ---------------------------------------------------------------------------
+  # macOS (arm64 + x86_64)
+  # ---------------------------------------------------------------------------
+  build-macos:
+    name: Build (macOS ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-latest
+          - arch: x86_64
+            runner: macos-13
+
+    steps:
+      - name: Checkout plugin source
+        uses: actions/checkout@v4
+
+      - name: Checkout OpenRGB source
+        uses: actions/checkout@v4
+        with:
+          repository: CalcProgrammer1/OpenRGB
+          ref: ${{ env.OPENRGB_TAG }}
+          path: OpenRGB
+
+      - name: Install dependencies
+        run: |
+          brew install qt@5 hidapi libusb mbedtls pkg-config
+          echo "$(brew --prefix qt@5)/bin" >> $GITHUB_PATH
+
+      - name: Build plugin
+        run: |
+          export OPENRGB_DIR=${{ github.workspace }}/OpenRGB
+          export PKG_CONFIG_PATH="$(brew --prefix hidapi)/lib/pkgconfig:$(brew --prefix qt@5)/lib/pkgconfig:$PKG_CONFIG_PATH"
+          qmake CorsairCapellixXT.pro
+          make -j$(sysctl -n hw.ncpu)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenRGBCorsairCapellixXTPlugin-macos-${{ matrix.arch }}
+          path: libOpenRGBCorsairCapellixXTPlugin.dylib
+
+  # ---------------------------------------------------------------------------
+  # Draft release with all artifacts
+  # ---------------------------------------------------------------------------
   release:
     name: Create Draft Release
-    needs: [build-linux]
+    needs: [build-linux-x86_64, build-windows, build-macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Download Linux artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: OpenRGBCorsairCapellixXTPlugin-linux-x86_64
           path: artifacts/
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          for dir in artifacts/*/; do
+            name=$(basename "$dir")
+            for file in "$dir"*; do
+              [ -f "$file" ] || continue
+              ext="${file##*.}"
+              cp "$file" "release/${name}.${ext}"
+            done
+          done
+          ls -la release/
 
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           generate_release_notes: true
-          files: |
-            artifacts/libOpenRGBCorsairCapellixXTPlugin.so
+          files: release/*
