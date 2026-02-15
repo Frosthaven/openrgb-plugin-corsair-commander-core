@@ -1,9 +1,12 @@
 #pragma once
 
 #include "OpenRGBPluginInterface.h"
-#include "ResourceManager.h"
+#include "ResourceManagerInterface.h"
 
 #include <QtPlugin>
+#include <vector>
+
+class RGBController;
 
 class CorsairCapellixXTPlugin : public QObject, public OpenRGBPluginInterface
 {
@@ -18,13 +21,14 @@ public:
     OpenRGBPluginInfo   GetPluginInfo()                                     override;
     unsigned int        GetPluginAPIVersion()                               override;
 
-    void                Load(bool dark_theme, ResourceManager* rm)          override;
+    void                Load(ResourceManagerInterface* rm)                  override;
     QWidget*            GetWidget()                                         override;
     QMenu*              GetTrayMenu()                                       override;
 
     void                Unload()                                            override;
 
 private:
-    ResourceManager*    resource_manager = nullptr;
-    bool                loaded           = false;
+    ResourceManagerInterface*       resource_manager = nullptr;
+    std::vector<RGBController*>     controllers;
+    bool                            loaded           = false;
 };

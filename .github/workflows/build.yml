@@ -12,11 +12,29 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Linux x86_64 (native)
+  # Linux (native x86_64 + QEMU-emulated ARM)
   # ---------------------------------------------------------------------------
-  build-linux-x86_64:
-    name: Build (Linux x86_64)
+  build-linux:
+    name: Build (Linux ${{ matrix.label }})
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental || false }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: x86_64
+            native: true
+          - label: arm64
+            native: false
+            qemu_arch: aarch64
+            distro: ubuntu_latest
+            experimental: true
+          - label: armhf
+            native: false
+            qemu_arch: armv7
+            distro: ubuntu_latest
+            experimental: true
+
     steps:
       - name: Checkout plugin source
         uses: actions/checkout@v4
@@ -28,7 +46,9 @@ jobs:
           ref: ${{ env.OPENRGB_TAG }}
           path: OpenRGB
 
-      - name: Install dependencies
+      # --- Native x86_64 ---
+      - name: Install dependencies (native)
+        if: matrix.native
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -36,51 +56,19 @@ jobs:
             libqt5svg5-dev libusb-1.0-0-dev libhidapi-dev libmbedtls-dev \
             pkgconf
 
-      - name: Build plugin
+      - name: Build plugin (native)
+        if: matrix.native
         run: |
           export OPENRGB_DIR=${{ github.workspace }}/OpenRGB
           qmake CorsairCapellixXT.pro
           make -j$(nproc)
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenRGBCorsairCapellixXTPlugin-linux-x86_64
-          path: libOpenRGBCorsairCapellixXTPlugin.so
-
-  # ---------------------------------------------------------------------------
-  # Linux ARM (QEMU emulation)
-  # ---------------------------------------------------------------------------
-  build-linux-arm:
-    name: Build (Linux ${{ matrix.arch }})
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: aarch64
-            distro: ubuntu_latest
-            label: arm64
-          - arch: armv7
-            distro: ubuntu_latest
-            label: armhf
-
-    steps:
-      - name: Checkout plugin source
-        uses: actions/checkout@v4
-
-      - name: Checkout OpenRGB source
-        uses: actions/checkout@v4
-        with:
-          repository: CalcProgrammer1/OpenRGB
-          ref: ${{ env.OPENRGB_TAG }}
-          path: OpenRGB
-
-      - name: Build on ${{ matrix.arch }}
+      # --- QEMU ARM ---
+      - name: Build plugin (QEMU ${{ matrix.qemu_arch }})
+        if: ${{ !matrix.native }}
         uses: uraimo/run-on-arch-action@v3
         with:
-          arch: ${{ matrix.arch }}
+          arch: ${{ matrix.qemu_arch }}
           distro: ${{ matrix.distro }}
           githubToken: ${{ github.token }}
           install: |
@@ -139,12 +127,13 @@ jobs:
           qmake CorsairCapellixXT.pro
           make -j$(nproc)
 
-      - name: Find and upload artifact
+      - name: Collect artifact
         shell: msys2 {0}
         run: |
-          # qmake on MinGW may place output in release/ or current dir
-          find . -name "*.dll" -path "*/OpenRGBCorsairCapellixXTPlugin*" \
-            -exec cp {} OpenRGBCorsairCapellixXTPlugin.dll \;
+          # qmake on MinGW may place DLL in release/ or current dir
+          if [ -f release/OpenRGBCorsairCapellixXTPlugin.dll ]; then
+            cp release/OpenRGBCorsairCapellixXTPlugin.dll .
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -153,19 +142,19 @@ jobs:
           path: OpenRGBCorsairCapellixXTPlugin.dll
 
   # ---------------------------------------------------------------------------
-  # macOS (arm64 + x86_64)
+  # macOS (arm64 Apple Silicon + x86_64 Intel)
   # ---------------------------------------------------------------------------
   build-macos:
-    name: Build (macOS ${{ matrix.arch }})
+    name: Build (macOS ${{ matrix.label }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - arch: arm64
+          - label: arm64
             runner: macos-latest
-          - arch: x86_64
-            runner: macos-13
+          - label: x86_64
+            runner: macos-15-intel
 
     steps:
       - name: Checkout plugin source
@@ -193,7 +182,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenRGBCorsairCapellixXTPlugin-macos-${{ matrix.arch }}
+          name: OpenRGBCorsairCapellixXTPlugin-macos-${{ matrix.label }}
           path: libOpenRGBCorsairCapellixXTPlugin.dylib
 
   # ---------------------------------------------------------------------------
@@ -201,7 +190,7 @@ jobs:
   # ---------------------------------------------------------------------------
   release:
     name: Create Draft Release
-    needs: [build-linux-x86_64, build-windows, build-macos]
+    needs: [build-linux, build-windows, build-macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

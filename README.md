@@ -126,15 +126,22 @@ should appear in the device list with four zones (pump head + three fans).
 ## CI / Automated Builds
 
 Every push to `main` triggers a [GitHub Actions workflow](.github/workflows/build.yml)
-that:
+that builds the plugin for all supported platforms:
 
-1. Checks out this plugin and the OpenRGB source tree
-2. Builds the `.so` on Ubuntu with Qt 5
-3. Uploads the binary as a build artifact
+| Platform | Architecture | Output |
+|---|---|---|
+| Linux | x86_64 | `.so` |
+| Linux | arm64 | `.so` |
+| Linux | armhf | `.so` |
+| Windows | x86_64 | `.dll` |
+| macOS | arm64 (Apple Silicon) | `.dylib` |
+| macOS | x86_64 (Intel) | `.dylib` |
+
+Build artifacts can be downloaded from the
+[Actions tab](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/actions).
 
 When a version tag is pushed (e.g. `git tag v0.1.0 && git push --tags`), the workflow
-also creates a **draft GitHub Release** with the plugin binary attached. The release
-can then be reviewed and published from the GitHub UI.
+also creates a **draft GitHub Release** with all platform binaries attached.
 
 ## Testing Without OpenRGB
 

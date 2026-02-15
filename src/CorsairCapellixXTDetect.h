@@ -4,4 +4,4 @@
 
 class RGBController;
 
-void DetectCorsairCapellixXT(std::vector<RGBController*>& rgb_controllers);
+std::vector<RGBController*> DetectCorsairCapellixXT();

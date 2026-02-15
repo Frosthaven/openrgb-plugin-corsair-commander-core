@@ -13,8 +13,10 @@
 |   0x0C32  Commander ST   (newer revision, 64-byte buffer)           |
 \*------------------------------------------------------------------*/
 
-void DetectCorsairCapellixXT(std::vector<RGBController*>& rgb_controllers)
+std::vector<RGBController*> DetectCorsairCapellixXT()
 {
+    std::vector<RGBController*> controllers;
+
     for(size_t p = 0; p < COMMANDER_CORE_PID_COUNT; p++)
     {
         uint16_t pid = COMMANDER_CORE_PIDS[p];
@@ -43,7 +45,7 @@ void DetectCorsairCapellixXT(std::vector<RGBController*>& rgb_controllers)
                     RGBController_CorsairCapellixXT* rgb =
                         new RGBController_CorsairCapellixXT(controller);
 
-                    rgb_controllers.push_back(rgb);
+                    controllers.push_back(rgb);
                 }
             }
 
@@ -52,4 +54,6 @@ void DetectCorsairCapellixXT(std::vector<RGBController*>& rgb_controllers)
 
         hid_free_enumeration(devs);
     }
+
+    return controllers;
 }

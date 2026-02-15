@@ -14,7 +14,7 @@ OpenRGBPluginInfo CorsairCapellixXTPlugin::GetPluginInfo()
     info.Icon.load(":/fan.svg");
 
     info.Label          = "";
-    info.Location       = OPENRGB_PLUGIN_LOCATION_NONE;
+    info.Location       = OPENRGB_PLUGIN_LOCATION_TOP;
 
     return info;
 }
@@ -24,7 +24,7 @@ unsigned int CorsairCapellixXTPlugin::GetPluginAPIVersion()
     return OPENRGB_PLUGIN_API_VERSION;
 }
 
-void CorsairCapellixXTPlugin::Load(bool /*dark_theme*/, ResourceManager* rm)
+void CorsairCapellixXTPlugin::Load(ResourceManagerInterface* rm)
 {
     if(loaded)
     {
@@ -34,12 +34,15 @@ void CorsairCapellixXTPlugin::Load(bool /*dark_theme*/, ResourceManager* rm)
     resource_manager = rm;
 
     /*-------------------------------------------------------------*\
-    | Register our device detector with the resource manager        |
+    | Detect devices and register controllers directly               |
     \*-------------------------------------------------------------*/
-    resource_manager->RegisterDeviceDetector(
-        "Corsair H150i Elite CAPELLIX XT",
-        DetectCorsairCapellixXT
-    );
+    std::vector<RGBController*> detected = DetectCorsairCapellixXT();
+
+    for(RGBController* ctrl : detected)
+    {
+        controllers.push_back(ctrl);
+        resource_manager->RegisterRGBController(ctrl);
+    }
 
     loaded = true;
 }
@@ -58,5 +61,10 @@ QMenu* CorsairCapellixXTPlugin::GetTrayMenu()
 
 void CorsairCapellixXTPlugin::Unload()
 {
+    for(RGBController* ctrl : controllers)
+    {
+        resource_manager->UnregisterRGBController(ctrl);
+    }
+    controllers.clear();
     loaded = false;
 }
