@@ -8,6 +8,7 @@
 #----------------------------------------------------------------------
 
 QT      -= gui
+QT      += svg
 TEMPLATE = lib
 CONFIG  += plugin c++17
 
@@ -15,9 +16,11 @@ TARGET   = OpenRGBCorsairCapellixXTPlugin
 
 # Version info embedded in the plugin binary
 VERSION_STRING = "0.1.0"
-GIT_COMMIT_ID  = ""
+GIT_COMMIT_ID  = $$system(git rev-parse --short=8 HEAD)
+GIT_COMMIT_DATE = $$system(git log -n 1 --pretty=format:"%ci")
 DEFINES += VERSION_STRING=\\\"$$VERSION_STRING\\\"
 DEFINES += GIT_COMMIT_ID=\\\"$$GIT_COMMIT_ID\\\"
+DEFINES += GIT_COMMIT_DATE=\\\"$$GIT_COMMIT_DATE\\\"
 
 #----------------------------------------------------------------------
 # OpenRGB source tree (set via environment or override here)
@@ -74,6 +77,9 @@ SOURCES += \
     src/CorsairCapellixXTController.cpp     \
     src/RGBController_CorsairCapellixXT.cpp \
     src/CorsairCapellixXTDetect.cpp
+
+RESOURCES += \
+    resources/resources.qrc
 
 #----------------------------------------------------------------------
 # Install target

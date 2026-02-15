@@ -58,12 +58,27 @@ sudo udevadm trigger
 
 Then unplug and replug the USB header (or reboot).
 
-## Installation
+## Installation (Pre-built)
+
+Pre-built plugin binaries are attached to each
+[GitHub Release](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/releases).
+You can also download the latest build artifact from the
+[Actions tab](https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt/actions).
+
+1. Download `libOpenRGBCorsairCapellixXTPlugin.so`
+2. Copy it to the OpenRGB plugins directory:
+   ```bash
+   mkdir -p ~/.config/OpenRGB/plugins
+   cp libOpenRGBCorsairCapellixXTPlugin.so ~/.config/OpenRGB/plugins/
+   ```
+3. Restart OpenRGB — the H150i CAPELLIX XT should appear in the device list
+
+## Building from Source
 
 ### 1. Clone this repository
 
 ```bash
-git clone https://github.com/<your-username>/openrgb-h150i-corsair-capellix-xt.git
+git clone https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt.git
 cd openrgb-h150i-corsair-capellix-xt
 ```
 
@@ -76,33 +91,50 @@ variable to the root of your OpenRGB source checkout:
 export OPENRGB_DIR=/path/to/OpenRGB
 ```
 
-### 3. Build the plugin
+### 3. Install build dependencies
+
+```bash
+# Debian/Ubuntu
+sudo apt install build-essential qtbase5-dev qtbase5-dev-tools qt5-qmake \
+    libqt5svg5-dev libusb-1.0-0-dev libhidapi-dev libmbedtls-dev pkgconf
+
+# Arch Linux
+sudo pacman -S qt5-base qt5-svg hidapi libusb mbedtls
+```
+
+### 4. Build the plugin
 
 ```bash
 qmake CorsairCapellixXT.pro
 make -j$(nproc)
 ```
 
-This produces `libOpenRGBCorsairCapellixXTPlugin.so` (Linux) or the equivalent `.dll`
-(Windows).
+This produces `libOpenRGBCorsairCapellixXTPlugin.so`.
 
-### 4. Install the plugin
-
-Copy the shared library to the OpenRGB plugins directory:
+### 5. Install the plugin
 
 ```bash
-# Linux
 mkdir -p ~/.config/OpenRGB/plugins
 cp libOpenRGBCorsairCapellixXTPlugin.so ~/.config/OpenRGB/plugins/
-
-# Windows (PowerShell)
-# Copy-Item OpenRGBCorsairCapellixXTPlugin.dll "$env:APPDATA\OpenRGB\plugins\"
 ```
 
-### 5. Restart OpenRGB
+### 6. Restart OpenRGB
 
 Launch OpenRGB. The plugin will be loaded automatically and the H150i CAPELLIX XT
 should appear in the device list with four zones (pump head + three fans).
+
+## CI / Automated Builds
+
+Every push to `main` triggers a [GitHub Actions workflow](.github/workflows/build.yml)
+that:
+
+1. Checks out this plugin and the OpenRGB source tree
+2. Builds the `.so` on Ubuntu with Qt 5
+3. Uploads the binary as a build artifact
+
+When a version tag is pushed (e.g. `git tag v0.1.0 && git push --tags`), the workflow
+also creates a **draft GitHub Release** with the plugin binary attached. The release
+can then be reviewed and published from the GitHub UI.
 
 ## Testing Without OpenRGB
 
@@ -157,14 +189,19 @@ Colors can be specified as `#RRGGBB` hex or `R,G,B` decimal.
 
 ## Protocol Reference
 
-The Commander Core protocol used here is based on documentation from:
+The Commander Core protocol used here is a clean-room reimplementation based on protocol
+documentation from:
 
-- [OpenLinkHub](https://github.com/jurkovic-nikola/OpenLinkHub) — Go implementation
-  (`src/devices/cc/cc.go`)
-- [liquidctl](https://github.com/liquidctl/liquidctl) — Python implementation
-  (`docs/developer/protocol/commander_core.md`)
-- [FanControl.CorsairLink](https://github.com/EvanMulawski/FanControl.CorsairLink) —
-  C# implementation
+- [OpenLinkHub](https://github.com/jurkovic-nikola/OpenLinkHub) (GPL-3.0) — Go
+  implementation (`src/devices/cc/cc.go`) used as protocol reference
+- [liquidctl](https://github.com/liquidctl/liquidctl) (GPL-3.0) — Python implementation
+  (`docs/developer/protocol/commander_core.md`) used as protocol reference
+
+The plugin icon is from [Lucide Icons](https://lucide.dev/) (ISC license).
+
+> **Note:** This project is an independent MIT-licensed implementation. No code was copied
+> from the GPL-licensed reference projects — only the USB HID protocol (command bytes,
+> packet layout, endpoint sequences) was studied and reimplemented from scratch.
 
 ## License
 

@@ -10,8 +10,8 @@ OpenRGBPluginInfo CorsairCapellixXTPlugin::GetPluginInfo()
                           "AIO liquid CPU cooler via the Commander Core controller.";
     info.Version        = VERSION_STRING;
     info.Commit         = GIT_COMMIT_ID;
-    info.URL            = "";
-    info.Icon.load(":/corsair_capellix_xt.png");
+    info.URL            = "https://github.com/Frosthaven/openrgb-h150i-corsair-capellix-xt";
+    info.Icon.load(":/fan.svg");
 
     info.Label          = "";
     info.Location       = OPENRGB_PLUGIN_LOCATION_NONE;
