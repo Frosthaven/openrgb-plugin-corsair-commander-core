@@ -100,6 +100,9 @@ macx {
     QMAKE_CXXFLAGS += -std=c++17
     # Allow RGBController symbols to resolve at runtime when OpenRGB loads us
     QMAKE_LFLAGS += -undefined dynamic_lookup
+    # Qt 5's default QMAKE_LFLAGS_PLUGIN includes -single_module, which
+    # modern ld warns is obsolete.  Strip it to keep the build clean.
+    QMAKE_LFLAGS_PLUGIN -= -single_module
 }
 
 win32 {

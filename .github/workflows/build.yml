@@ -26,6 +26,9 @@ jobs:
     name: Build (Linux ${{ matrix.label }})
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental || false }}
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:

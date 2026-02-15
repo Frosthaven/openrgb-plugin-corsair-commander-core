@@ -46,8 +46,6 @@ void RGBController_CorsairCapellixXT::SetupZones()
     zones.clear();
     colors.clear();
 
-    unsigned int led_idx = 0;
-
     for(const ChannelInfo& info : ch)
     {
         zone z;
@@ -70,7 +68,6 @@ void RGBController_CorsairCapellixXT::SetupZones()
             led l;
             l.name = info.name + " LED " + std::to_string(i);
             leds.push_back(l);
-            led_idx++;
         }
     }
 
