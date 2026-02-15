@@ -39,9 +39,10 @@ isEmpty(OPENRGB_DIR) {
 INCLUDEPATH += $$OPENRGB_DIR
 
 # Dynamically discover directories containing headers in the OpenRGB tree.
-# This avoids adding non-source dirs (debian/, Documentation/, .git/) that
-# would break compilation. Works on Linux, macOS, and MSYS2/MinGW.
-INCLUDEPATH += $$system(find $$OPENRGB_DIR -name '*.h' | sed 's|/[^/]*$$||' | sort -u 2>/dev/null)
+# Uses dirname to extract parent dirs of .h files, avoiding non-source dirs
+# (debian/, Documentation/, .git/) that would clash with system headers.
+# Note: sed is avoided here because qmake's $$system() eats $$ sequences.
+INCLUDEPATH += $$system(find $$OPENRGB_DIR -name \\*.h -exec dirname {} + | sort -u 2>/dev/null)
 
 #----------------------------------------------------------------------
 # hidapi link flags
@@ -61,7 +62,8 @@ macx {
 }
 
 win32 {
-    LIBS += -lhidapi
+    CONFIG  += link_pkgconfig
+    PKGCONFIG += hidapi
 }
 
 #----------------------------------------------------------------------
