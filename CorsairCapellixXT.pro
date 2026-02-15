@@ -98,8 +98,6 @@ macx {
     # <filesystem> requires macOS 10.15+; Qt 5 defaults to 10.13
     QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
     QMAKE_CXXFLAGS += -std=c++17
-    # Allow RGBController symbols to resolve at runtime when OpenRGB loads us
-    QMAKE_LFLAGS += -undefined dynamic_lookup
     # Qt 5's default QMAKE_LFLAGS_PLUGIN includes -single_module, which
     # modern ld warns is obsolete.  Strip it to keep the build clean.
     QMAKE_LFLAGS_PLUGIN -= -single_module
@@ -108,12 +106,16 @@ macx {
 win32 {
     CONFIG  += link_pkgconfig
     PKGCONFIG += hidapi
-    # Windows DLLs cannot have unresolved symbols. Compile the
-    # RGBController base class into the plugin so the linker can
-    # resolve the vtable. The file has no OpenRGB dependencies
-    # beyond its own header (only uses standard library types).
-    SOURCES += $$OPENRGB_DIR/RGBController/RGBController.cpp
 }
+
+#----------------------------------------------------------------------
+# RGBController base class — compiled into the plugin so the typeinfo
+# and vtable symbols are always available.  The host app (OpenRGB) does
+# not export these to dlopen'd plugins on every platform, so bundling
+# the single file (~cstring only) avoids undefined-symbol errors at
+# load time on Linux, macOS, and Windows alike.
+#----------------------------------------------------------------------
+SOURCES += $$OPENRGB_DIR/RGBController/RGBController.cpp
 
 #----------------------------------------------------------------------
 # Plugin sources
