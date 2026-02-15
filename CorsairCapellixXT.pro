@@ -98,11 +98,18 @@ macx {
     # <filesystem> requires macOS 10.15+; Qt 5 defaults to 10.13
     QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
     QMAKE_CXXFLAGS += -std=c++17
+    # Allow RGBController symbols to resolve at runtime when OpenRGB loads us
+    QMAKE_LFLAGS += -undefined dynamic_lookup
 }
 
 win32 {
     CONFIG  += link_pkgconfig
     PKGCONFIG += hidapi
+    # Windows DLLs cannot have unresolved symbols. Compile the
+    # RGBController base class into the plugin so the linker can
+    # resolve the vtable. The file has no OpenRGB dependencies
+    # beyond its own header (only uses standard library types).
+    SOURCES += $$OPENRGB_DIR/RGBController/RGBController.cpp
 }
 
 #----------------------------------------------------------------------

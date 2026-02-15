@@ -180,7 +180,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install qt@5 hidapi libusb mbedtls pkg-config
+          brew install qt@5 hidapi libusb mbedtls pkg-config 2>&1 | grep -v 'already installed'
           echo "$(brew --prefix qt@5)/bin" >> $GITHUB_PATH
 
       - name: Build plugin
