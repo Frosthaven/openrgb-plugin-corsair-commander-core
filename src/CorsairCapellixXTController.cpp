@@ -80,6 +80,11 @@ std::string CorsairCapellixXTController::GetDeviceName()
     return device_name;
 }
 
+uint16_t CorsairCapellixXTController::GetProductID()
+{
+    return product_id;
+}
+
 unsigned int CorsairCapellixXTController::GetTotalLEDCount()
 {
     return total_leds;

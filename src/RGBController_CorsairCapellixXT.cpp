@@ -15,10 +15,19 @@
 RGBController_CorsairCapellixXT::RGBController_CorsairCapellixXT(CorsairCapellixXTController* ctrl)
     : controller(ctrl)
 {
-    name                    = "Corsair H150i Elite CAPELLIX XT";
+    if(controller->GetProductID() == COMMANDER_ST_PID)
+    {
+        name                = "Corsair CAPELLIX XT";
+        description         = "Corsair iCUE CAPELLIX XT AIO Liquid CPU Cooler";
+    }
+    else
+    {
+        name                = "Corsair CAPELLIX";
+        description         = "Corsair iCUE CAPELLIX AIO Liquid CPU Cooler";
+    }
+
     vendor                  = "Corsair";
     type                    = DEVICE_TYPE_COOLER;
-    description             = "Corsair iCUE H150i Elite CAPELLIX XT AIO Liquid CPU Cooler";
     version                 = controller->GetFirmwareVersion();
     serial                  = controller->GetSerialString();
     location                = controller->GetDevicePath();

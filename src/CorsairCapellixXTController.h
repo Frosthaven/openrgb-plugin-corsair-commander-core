@@ -83,6 +83,7 @@ public:
     std::string                 GetFirmwareVersion();
     std::string                 GetSerialString();
     std::string                 GetDeviceName();
+    uint16_t                    GetProductID();
 
     unsigned int                GetTotalLEDCount();
     std::vector<ChannelInfo>&   GetChannels();
