@@ -98,8 +98,8 @@ If you want to build a setup where all of your fans follow this same mode, see
 - **Cooling tab is missing:** the device was not detected, so there is nothing to control.
   See above.
 - **Pump suddenly loud / device vanished from OpenRGB:** the controller can re-enumerate
-  and become invisible to OpenRGB until a replug. See the recovery steps in
-  [DEVELOPMENT.md](DEVELOPMENT.md).
+  and become invisible to OpenRGB. Unplug and replug the cooler's internal USB header, or
+  reboot, and it will come back.
 
 ## Building and contributing
 
