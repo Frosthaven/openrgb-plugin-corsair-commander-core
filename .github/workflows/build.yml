@@ -16,7 +16,6 @@ jobs:
     continue-on-error: ${{ matrix.experimental || false }}
     permissions:
       contents: read
-      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -69,7 +68,6 @@ jobs:
         with:
           arch: ${{ matrix.qemu_arch }}
           distro: ${{ matrix.distro }}
-          githubToken: ${{ github.token }}
           install: |
             apt-get update -q -y
             apt-get install -q -y \

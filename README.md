@@ -12,7 +12,12 @@ It does two things:
 
 ## Install
 
-1. **Download** the plugin for your platform from the
+1. **Disable the built-in detector.** OpenRGB has its own Commander Core driver that
+   conflicts with this plugin. In OpenRGB go to *Settings > Supported Devices* and
+   **uncheck** both `Corsair Commander Core` and `Corsair Commander Core XT`, then save
+   and restart OpenRGB.
+
+2. **Download** the plugin for your platform from the
    [Releases](https://github.com/Frosthaven/openrgb-plugin-corsair-commander-core/releases)
    page:
 
@@ -21,11 +26,6 @@ It does two things:
    | Linux | `libOpenRGBCorsairCommanderCorePlugin.so` |
    | Windows | `OpenRGBCorsairCommanderCorePlugin.dll` |
    | macOS | `libOpenRGBCorsairCommanderCorePlugin.dylib` |
-
-2. **Disable the built-in detector.** OpenRGB has its own Commander Core driver that
-   conflicts with this plugin. In OpenRGB go to *Settings > Supported Devices* and
-   **uncheck** both `Corsair Commander Core` and `Corsair Commander Core XT`, then save
-   and restart OpenRGB.
 
 3. **Install the plugin.** Either use *Settings > Plugins > Install Plugin* in OpenRGB,
    or copy the file into the plugins folder yourself:
