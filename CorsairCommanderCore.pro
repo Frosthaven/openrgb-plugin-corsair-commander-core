@@ -7,8 +7,7 @@
 #   make -j$(nproc)
 #----------------------------------------------------------------------
 
-QT      -= gui
-QT      += svg
+QT      += widgets svg
 TEMPLATE = lib
 CONFIG  += plugin c++17
 

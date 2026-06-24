@@ -1,5 +1,8 @@
 #include "CorsairCapellixXTController.h"
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
 #include <thread>
 #include <chrono>
 
@@ -50,12 +53,45 @@ CorsairCapellixXTController::CorsairCapellixXTController(hid_device* dev, const 
         std::wstring ws(buf);
         device_name = std::string(ws.begin(), ws.end());
     }
+
+    /*-------------------------------------------------------------*\
+    | Default pump curve: liquid temperature (C) -> pump duty (%).   |
+    | Quiet (~1150 rpm) up to ~42C, ramping to full by ~58C.         |
+    | Floor is clamped to PUMP_DUTY_MIN so the pump never stops.     |
+    \*-------------------------------------------------------------*/
+    pump_curve =
+    {
+        { 45.0f,  30 },     // idle: quiet (~1130 rpm) up to 45C
+        { 50.0f,  40 },
+        { 53.0f,  65 },
+        { 56.0f, 100 },     // sustained load: full
+    };
+
+    fan_curve =
+    {
+        { 42.0f,  FAN_DUTY_MIN },   // idle: floor (~300 rpm) up to 42C
+        { 46.0f,  35 },
+        { 50.0f,  60 },
+        { 53.0f,  85 },
+        { 56.0f, 100 },             // sustained load: full
+    };
+
+    LoadPumpMode();
 }
 
 CorsairCapellixXTController::~CorsairCapellixXTController()
 {
     StopKeepalive();
-    SetHardwareMode();
+
+    /*-----------------------------------------------------------------*\
+    | NOTE: we deliberately do NOT send the hardware-mode command here. |
+    | On this controller switching to hardware mode triggers a USB      |
+    | re-enumeration, and the re-enumeration sometimes drops interface   |
+    | 0's hidraw node, after which OpenRGB (hidraw backend) can no       |
+    | longer detect the device until a physical replug / USB reset.     |
+    | Once the keepalive stops the device reverts to its hardware        |
+    | lighting on its own, so this is both safe and more robust.         |
+    \*-----------------------------------------------------------------*/
 
     if(dev)
     {
@@ -97,6 +133,18 @@ void CorsairCapellixXTController::KeepaliveThread()
         {
             SendKeepalive();
         }
+
+        /*-------------------------------------------------------------*\
+        | Re-evaluate the pump curve every PUMP_UPDATE_INTERVAL_SEC.     |
+        | Re-sending every cycle also keeps the pump in software-speed   |
+        | mode so it can't revert to the loud hardware default.          |
+        \*-------------------------------------------------------------*/
+        if(++pump_update_counter >= PUMP_UPDATE_INTERVAL_SEC)
+        {
+            pump_update_counter = 0;
+            UpdatePumpFromCurve();
+        }
+
         std::this_thread::sleep_for(1s);
     }
 }
@@ -181,6 +229,8 @@ std::vector<uint8_t> CorsairCapellixXTController::Transfer(
     const std::vector<uint8_t>& endpoint,
     const std::vector<uint8_t>& buf)
 {
+    std::lock_guard<std::recursive_mutex> lock(io_mutex);
+
     std::vector<uint8_t> pkt(write_buffer_size, 0x00);
 
     pkt[0] = 0x00;                // HID report ID
@@ -217,6 +267,8 @@ std::vector<uint8_t> CorsairCapellixXTController::Transfer(
 
 std::vector<uint8_t> CorsairCapellixXTController::ReadEndpoint(uint8_t mode)
 {
+    std::lock_guard<std::recursive_mutex> lock(io_mutex);
+
     std::vector<uint8_t> mode_buf = { mode };
 
     Transfer({CMD_CLOSE_ENDPOINT_0, CMD_CLOSE_ENDPOINT_1, CMD_CLOSE_ENDPOINT_2}, mode_buf);
@@ -342,6 +394,12 @@ void CorsairCapellixXTController::Initialize()
              {MODE_SET_COLOR});
 
     /*-----------------------------------------------------------------*\
+    | Apply the pump curve once immediately so the pump goes quiet at    |
+    | startup instead of waiting for the first keepalive tick           |
+    \*-----------------------------------------------------------------*/
+    UpdatePumpFromCurve();
+
+    /*-----------------------------------------------------------------*\
     | Start keepalive thread to prevent revert to hardware lighting     |
     \*-----------------------------------------------------------------*/
     StartKeepalive();
@@ -366,6 +424,12 @@ void CorsairCapellixXTController::SendColors(const std::vector<uint8_t>& color_d
     {
         return;
     }
+
+    /*-----------------------------------------------------------------*\
+    | Hold the device lock for the whole multi-chunk write so a pump     |
+    | update on the keepalive thread can't interleave on the HID pipe    |
+    \*-----------------------------------------------------------------*/
+    std::lock_guard<std::recursive_mutex> io_lock(io_mutex);
 
     /*-----------------------------------------------------------------*\
     | Store last colors for keepalive resend                            |
@@ -420,4 +484,329 @@ void CorsairCapellixXTController::SendColors(const std::vector<uint8_t>& color_d
     }
 
     last_commit_time = std::chrono::steady_clock::now();
+}
+
+/*---------------------------------------------------------------------*\
+| Pump / fan speed control (endpoint 0x18, dataType 0x07 0x00)          |
+|                                                                       |
+| Speed buffer (one channel here, the pump):                            |
+|   [0]    = channel count (1)                                          |
+|   [1..4] = { channel, mode(0=percent), duty, 0x00 }                   |
+| Wrapped like writeColor: LE16 size, 0x00 0x00 pad, dataType, data.    |
+\*---------------------------------------------------------------------*/
+
+void CorsairCapellixXTController::SetPumpDuty(uint8_t duty)
+{
+    /*-----------------------------------------------------------------*\
+    | SAFETY: clamp to a floor so the pump never stops (no flow).        |
+    | Measured: <=10% => 0 rpm, 20% => ~690 rpm, 30% => ~1150 rpm.       |
+    \*-----------------------------------------------------------------*/
+    if(duty < PUMP_DUTY_MIN) duty = PUMP_DUTY_MIN;
+    if(duty > PUMP_DUTY_MAX) duty = PUMP_DUTY_MAX;
+
+    std::vector<uint8_t> speed_data =
+    {
+        0x01,                       // channel count
+        (uint8_t)PUMP_CHANNEL,      // channel id (pump = 0)
+        SPEED_MODE_PERCENT,         // mode (fixed percent)
+        duty,                       // duty %
+        0x00,
+    };
+
+    uint16_t size = (uint16_t)(speed_data.size() + 2);
+
+    std::vector<uint8_t> write_buf;
+    write_buf.push_back(size & 0xFF);
+    write_buf.push_back((size >> 8) & 0xFF);
+    write_buf.push_back(0x00);
+    write_buf.push_back(0x00);
+    write_buf.push_back(DATA_TYPE_SET_SPEED_0);
+    write_buf.push_back(DATA_TYPE_SET_SPEED_1);
+    write_buf.insert(write_buf.end(), speed_data.begin(), speed_data.end());
+
+    std::lock_guard<std::recursive_mutex> lock(io_mutex);
+    Transfer({CMD_CLOSE_ENDPOINT_0, CMD_CLOSE_ENDPOINT_1, CMD_CLOSE_ENDPOINT_2}, {MODE_SET_SPEED});
+    Transfer({CMD_OPEN_ENDPOINT_0, CMD_OPEN_ENDPOINT_1}, {MODE_SET_SPEED});
+    Transfer({CMD_WRITE_0, CMD_WRITE_1}, write_buf);
+    Transfer({CMD_CLOSE_ENDPOINT_0, CMD_CLOSE_ENDPOINT_1, CMD_CLOSE_ENDPOINT_2}, {MODE_SET_SPEED});
+
+    last_pump_duty.store(duty);
+}
+
+/*---------------------------------------------------------------------*\
+| Read AIO liquid temperature (channel 0 of the temperature endpoint)   |
+|   response[6]   = status (0x00 == connected)                          |
+|   response[7:9] = temperature * 10, little-endian                     |
+\*---------------------------------------------------------------------*/
+
+float CorsairCapellixXTController::ReadLiquidTemp()
+{
+    std::vector<uint8_t> resp = ReadEndpoint(MODE_GET_TEMPS);
+
+    if(resp.size() < 9)
+    {
+        return -1.0f;
+    }
+    if(resp[6] != 0x00)
+    {
+        return -1.0f;
+    }
+
+    int16_t raw = (int16_t)(resp[7] | (resp[8] << 8));
+    return (float)raw / 10.0f;
+}
+
+/*---------------------------------------------------------------------*\
+| Read pump RPM (channel 0 of the speeds endpoint)                      |
+\*---------------------------------------------------------------------*/
+
+int CorsairCapellixXTController::ReadPumpRpm()
+{
+    std::vector<uint8_t> resp = ReadEndpoint(MODE_GET_SPEEDS);
+
+    if(resp.size() < 8)
+    {
+        return -1;
+    }
+
+    return (int)(int16_t)(resp[6] | (resp[7] << 8));
+}
+
+/*---------------------------------------------------------------------*\
+| Read first radiator fan RPM (speed channel 1)                         |
+\*---------------------------------------------------------------------*/
+
+int CorsairCapellixXTController::ReadFanRpm()
+{
+    std::vector<uint8_t> resp = ReadEndpoint(MODE_GET_SPEEDS);
+
+    if(resp.size() < 10)
+    {
+        return -1;
+    }
+
+    // [6:8] = pump (ch0), [8:10] = fan1 (ch1)
+    return (int)(int16_t)(resp[8] | (resp[9] << 8));
+}
+
+/*---------------------------------------------------------------------*\
+| Drive pump (channel 0) and all radiator fans (channels 1..6) in a     |
+| single speed write. Fans are clamped to FAN_DUTY_MIN so they never    |
+| stall (~300 rpm floor); the pump is clamped to PUMP_DUTY_MIN.         |
+\*---------------------------------------------------------------------*/
+
+void CorsairCapellixXTController::SetCooling(uint8_t pump_duty, uint8_t fan_duty)
+{
+    if(pump_duty < PUMP_DUTY_MIN) pump_duty = PUMP_DUTY_MIN;
+    if(pump_duty > PUMP_DUTY_MAX) pump_duty = PUMP_DUTY_MAX;
+    if(fan_duty  < FAN_DUTY_MIN)  fan_duty  = FAN_DUTY_MIN;
+    if(fan_duty  > 100)           fan_duty  = 100;
+
+    int channel_count = 1 + (FAN_CHANNEL_LAST - FAN_CHANNEL_FIRST + 1);  // pump + 6 fans
+
+    std::vector<uint8_t> speed_data;
+    speed_data.push_back((uint8_t)channel_count);
+
+    // pump (channel 0)
+    speed_data.push_back((uint8_t)PUMP_CHANNEL);
+    speed_data.push_back(SPEED_MODE_PERCENT);
+    speed_data.push_back(pump_duty);
+    speed_data.push_back(0x00);
+
+    // fans (channels 1..6 — unconnected ports are harmlessly ignored)
+    for(int ch = FAN_CHANNEL_FIRST; ch <= FAN_CHANNEL_LAST; ch++)
+    {
+        speed_data.push_back((uint8_t)ch);
+        speed_data.push_back(SPEED_MODE_PERCENT);
+        speed_data.push_back(fan_duty);
+        speed_data.push_back(0x00);
+    }
+
+    uint16_t size = (uint16_t)(speed_data.size() + 2);
+
+    std::vector<uint8_t> write_buf;
+    write_buf.push_back(size & 0xFF);
+    write_buf.push_back((size >> 8) & 0xFF);
+    write_buf.push_back(0x00);
+    write_buf.push_back(0x00);
+    write_buf.push_back(DATA_TYPE_SET_SPEED_0);
+    write_buf.push_back(DATA_TYPE_SET_SPEED_1);
+    write_buf.insert(write_buf.end(), speed_data.begin(), speed_data.end());
+
+    std::lock_guard<std::recursive_mutex> lock(io_mutex);
+    Transfer({CMD_CLOSE_ENDPOINT_0, CMD_CLOSE_ENDPOINT_1, CMD_CLOSE_ENDPOINT_2}, {MODE_SET_SPEED});
+    Transfer({CMD_OPEN_ENDPOINT_0, CMD_OPEN_ENDPOINT_1}, {MODE_SET_SPEED});
+    Transfer({CMD_WRITE_0, CMD_WRITE_1}, write_buf);
+    Transfer({CMD_CLOSE_ENDPOINT_0, CMD_CLOSE_ENDPOINT_1, CMD_CLOSE_ENDPOINT_2}, {MODE_SET_SPEED});
+
+    last_pump_duty.store(pump_duty);
+    last_fan_duty.store(fan_duty);
+}
+
+/*---------------------------------------------------------------------*\
+| Linear interpolation across the pump curve                            |
+\*---------------------------------------------------------------------*/
+
+uint8_t CorsairCapellixXTController::EvalCurve(const std::vector<CurvePoint>& curve, float tempC)
+{
+    if(curve.empty())
+    {
+        return PUMP_DUTY_MIN;
+    }
+
+    if(tempC <= curve.front().tempC)
+    {
+        return curve.front().duty;
+    }
+    if(tempC >= curve.back().tempC)
+    {
+        return curve.back().duty;
+    }
+
+    for(size_t i = 1; i < curve.size(); i++)
+    {
+        const CurvePoint& a = curve[i - 1];
+        const CurvePoint& b = curve[i];
+        if(tempC <= b.tempC)
+        {
+            float span = b.tempC - a.tempC;
+            float frac = span > 0.0f ? (tempC - a.tempC) / span : 0.0f;
+            float duty = a.duty + frac * ((float)b.duty - (float)a.duty);
+            return (uint8_t)(duty + 0.5f);
+        }
+    }
+
+    return curve.back().duty;
+}
+
+/*---------------------------------------------------------------------*\
+| Read liquid temp, evaluate the curve, drive the pump                  |
+\*---------------------------------------------------------------------*/
+
+void CorsairCapellixXTController::UpdatePumpFromCurve()
+{
+    float tempC = ReadLiquidTemp();
+    if(tempC >= 0.0f)
+    {
+        last_liquid_temp.store(tempC);
+    }
+
+    int         mode = pump_mode.load();
+    const char* mode_name;
+    uint8_t     pump_duty;
+    uint8_t     fan_duty;
+
+    switch(mode)
+    {
+        case PUMP_MODE_SILENT:       pump_duty = PUMP_DUTY_SILENT;      fan_duty = FAN_DUTY_SILENT;      mode_name = "Silent";      break;
+        case PUMP_MODE_QUIET:        pump_duty = PUMP_DUTY_QUIET;       fan_duty = FAN_DUTY_QUIET;       mode_name = "Quiet";       break;
+        case PUMP_MODE_BALANCED:     pump_duty = PUMP_DUTY_BALANCED;    fan_duty = FAN_DUTY_BALANCED;    mode_name = "Balanced";    break;
+        case PUMP_MODE_PERFORMANCE:  pump_duty = PUMP_DUTY_PERFORMANCE; fan_duty = FAN_DUTY_PERFORMANCE; mode_name = "Performance"; break;
+        case PUMP_MODE_AUTO:
+        default:
+            mode_name = "Auto";
+            if(tempC >= 0.0f)
+            {
+                pump_duty = EvalCurve(pump_curve, tempC);
+                fan_duty  = EvalCurve(fan_curve,  tempC);
+            }
+            else
+            {
+                pump_duty = last_pump_duty.load();
+                fan_duty  = last_fan_duty.load();
+            }
+            break;
+    }
+
+    SetCooling(pump_duty, fan_duty);
+
+    int prpm = ReadPumpRpm();
+    int frpm = ReadFanRpm();
+    printf("[CommanderCore] mode=%s liquid=%.1fC | pump=%u%%/%drpm | fans=%u%%/%drpm\n",
+           mode_name, tempC, (unsigned)pump_duty, prpm, (unsigned)fan_duty, frpm);
+    fflush(stdout);
+}
+
+void CorsairCapellixXTController::SetPumpCurve(const std::vector<CurvePoint>& points)
+{
+    if(!points.empty())
+    {
+        pump_curve = points;
+    }
+}
+
+float CorsairCapellixXTController::GetLastLiquidTemp()
+{
+    return last_liquid_temp.load();
+}
+
+uint8_t CorsairCapellixXTController::GetLastPumpDuty()
+{
+    return last_pump_duty.load();
+}
+
+/*---------------------------------------------------------------------*\
+| Pump mode selection + persistence                                     |
+\*---------------------------------------------------------------------*/
+
+static std::string PumpModeConfigPath()
+{
+    const char* home = getenv("HOME");
+    if(home == nullptr)
+    {
+        return "";
+    }
+    return std::string(home) + "/.config/OpenRGB/plugins/settings/CommanderCorePump.conf";
+}
+
+void CorsairCapellixXTController::SetPumpMode(int mode)
+{
+    if(mode < PUMP_MODE_AUTO || mode > PUMP_MODE_PERFORMANCE)
+    {
+        mode = PUMP_MODE_AUTO;
+    }
+    pump_mode.store(mode);
+    SavePumpMode();
+    UpdatePumpFromCurve();      // apply the new mode immediately
+}
+
+int CorsairCapellixXTController::GetPumpMode()
+{
+    return pump_mode.load();
+}
+
+void CorsairCapellixXTController::LoadPumpMode()
+{
+    std::string path = PumpModeConfigPath();
+    if(path.empty())
+    {
+        return;
+    }
+    FILE* f = fopen(path.c_str(), "r");
+    if(f == nullptr)
+    {
+        return;                 // no saved file yet -> stays default (Auto)
+    }
+    int m = PUMP_MODE_AUTO;
+    if(fscanf(f, "%d", &m) == 1 && m >= PUMP_MODE_AUTO && m <= PUMP_MODE_PERFORMANCE)
+    {
+        pump_mode.store(m);
+    }
+    fclose(f);
+}
+
+void CorsairCapellixXTController::SavePumpMode()
+{
+    std::string path = PumpModeConfigPath();
+    if(path.empty())
+    {
+        return;
+    }
+    FILE* f = fopen(path.c_str(), "w");
+    if(f == nullptr)
+    {
+        return;
+    }
+    fprintf(f, "%d\n", pump_mode.load());
+    fclose(f);
 }

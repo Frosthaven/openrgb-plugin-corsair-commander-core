@@ -7,6 +7,7 @@
 #include <vector>
 
 class RGBController;
+class CorsairCapellixXTController;
 
 class CorsairCapellixXTPlugin : public QObject, public OpenRGBPluginInterface
 {
@@ -28,7 +29,8 @@ public:
     void                Unload()                                            override;
 
 private:
-    ResourceManagerInterface*       resource_manager = nullptr;
-    std::vector<RGBController*>     controllers;
-    bool                            loaded           = false;
+    ResourceManagerInterface*                   resource_manager = nullptr;
+    std::vector<RGBController*>                  controllers;
+    std::vector<CorsairCapellixXTController*>    pump_controllers;
+    bool                                        loaded           = false;
 };

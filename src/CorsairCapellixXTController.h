@@ -84,6 +84,58 @@ static const size_t COMMANDER_CORE_PID_COUNT = 7;
 // LED status byte meaning
 #define LED_STATUS_CONNECTED        0x02
 
+// Speed / temperature control (firmware 2.0 — ported from OpenLinkHub cc.go)
+//   endpoint 0x18 = set speed, 0x17 = get speeds, 0x21 = get temperatures
+#define CMD_WRITE_0                 0x06    // non-color write (color write is 0x06 0x00)
+#define CMD_WRITE_1                 0x01
+
+#define MODE_GET_SPEEDS             0x17
+#define MODE_SET_SPEED              0x18
+#define MODE_GET_TEMPS              0x21
+
+#define DATA_TYPE_SET_SPEED_0       0x07
+#define DATA_TYPE_SET_SPEED_1       0x00
+
+#define SPEED_MODE_PERCENT          0x00    // per-channel mode byte: 0 = fixed percent
+
+#define PUMP_CHANNEL                0       // pump is speed channel 0 (also carries liquid temp)
+#define PUMP_DUTY_MIN               30      // SAFETY floor: <=10% stops the pump (no coolant flow)
+#define PUMP_DUTY_MAX               100
+#define PUMP_UPDATE_INTERVAL_SEC    3       // re-evaluate the curve every N seconds
+
+// Selectable pump operating modes (exposed as radio buttons in the plugin pane).
+// Fixed-mode duties are calibrated from the measured duty->RPM sweep on this pump.
+enum CorsairPumpMode
+{
+    PUMP_MODE_AUTO        = 0,   // liquid-temperature curve (default; quiet idle)
+    PUMP_MODE_SILENT      = 1,   // fixed, quietest safe speed (below iCUE Quiet)
+    PUMP_MODE_QUIET       = 2,   // fixed, ~iCUE "Quiet"    band
+    PUMP_MODE_BALANCED    = 3,   // fixed, ~iCUE "Balanced" band
+    PUMP_MODE_PERFORMANCE = 4,   // fixed, ~iCUE "Extreme"  band
+};
+
+#define PUMP_DUTY_SILENT            30      // ~1130 rpm (quietest safe flow)
+#define PUMP_DUTY_QUIET             65      // ~2150 rpm
+#define PUMP_DUTY_BALANCED          80      // ~2500 rpm
+#define PUMP_DUTY_PERFORMANCE      100      // ~2800 rpm
+
+// Radiator fans are speed channels 1..6 (channel 0 is the pump). Each mode
+// drives the fans too, so "Silent" actually quiets the loudest component.
+#define FAN_CHANNEL_FIRST           1
+#define FAN_CHANNEL_LAST            6
+#define FAN_DUTY_MIN                20      // floor: keeps fans above ~300 rpm (no stall) - tuned by test
+#define FAN_DUTY_SILENT             20      // quietest (= floor)
+#define FAN_DUTY_QUIET              40
+#define FAN_DUTY_BALANCED           65
+#define FAN_DUTY_PERFORMANCE       100
+
+// A single (liquid temperature -> pump duty%) point on the control curve
+struct CurvePoint
+{
+    float           tempC;
+    uint8_t         duty;
+};
+
 struct ChannelInfo
 {
     unsigned int    port;
@@ -115,6 +167,26 @@ public:
     void                        StartKeepalive();
     void                        StopKeepalive();
 
+    /*-----------------------------------------------------------------*\
+    | Pump speed control (liquid-temp curve, runs in the keepalive      |
+    | thread so it shares this process's exclusive device access)       |
+    \*-----------------------------------------------------------------*/
+    void                        SetPumpDuty(uint8_t duty);
+    void                        SetCooling(uint8_t pump_duty, uint8_t fan_duty);
+    float                       ReadLiquidTemp();
+    int                         ReadPumpRpm();
+    int                         ReadFanRpm();
+    void                        SetPumpCurve(const std::vector<CurvePoint>& points);
+    float                       GetLastLiquidTemp();
+    uint8_t                     GetLastPumpDuty();
+
+    /*-----------------------------------------------------------------*\
+    | Pump mode: PUMP_MODE_AUTO (curve) or a fixed Quiet/Balanced/Perf   |
+    | mode. Persisted so the choice survives restarts.                   |
+    \*-----------------------------------------------------------------*/
+    void                        SetPumpMode(int mode);
+    int                         GetPumpMode();
+
 private:
     hid_device*                 dev;
     uint16_t                    product_id;
@@ -139,8 +211,30 @@ private:
     std::vector<uint8_t>                        last_colors;
     std::chrono::steady_clock::time_point       last_commit_time;
 
+    /*-----------------------------------------------------------------*\
+    | Serializes ALL device I/O so the pump-curve updates and the color  |
+    | writes (different threads) never interleave on the single HID pipe |
+    \*-----------------------------------------------------------------*/
+    std::recursive_mutex                        io_mutex;
+
+    /*-----------------------------------------------------------------*\
+    | Pump control state                                                 |
+    \*-----------------------------------------------------------------*/
+    std::vector<CurvePoint>                     pump_curve;
+    std::vector<CurvePoint>                     fan_curve;
+    int                                         pump_update_counter = 0;
+    std::atomic<float>                          last_liquid_temp{0.0f};
+    std::atomic<uint8_t>                        last_pump_duty{0};
+    std::atomic<uint8_t>                        last_fan_duty{0};
+    std::atomic<int>                            pump_mode{PUMP_MODE_AUTO};
+
     void                        KeepaliveThread();
     void                        SendKeepalive();
+
+    uint8_t                     EvalCurve(const std::vector<CurvePoint>& curve, float tempC);
+    void                        UpdatePumpFromCurve();
+    void                        LoadPumpMode();
+    void                        SavePumpMode();
 
     /*-----------------------------------------------------------------*\
     | Core transfer: every packet has 0x08 at byte[1]                   |

@@ -1,5 +1,13 @@
 #include "CorsairCapellixXTPlugin.h"
 #include "CorsairCapellixXTDetect.h"
+#include "CorsairCapellixXTController.h"
+
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QRadioButton>
+#include <QButtonGroup>
+#include <QFont>
 
 OpenRGBPluginInfo CorsairCapellixXTPlugin::GetPluginInfo()
 {
@@ -36,7 +44,7 @@ void CorsairCapellixXTPlugin::Load(ResourceManagerInterface* rm)
     /*-------------------------------------------------------------*\
     | Detect devices and register controllers directly               |
     \*-------------------------------------------------------------*/
-    std::vector<RGBController*> detected = DetectCorsairCapellixXT();
+    std::vector<RGBController*> detected = DetectCorsairCapellixXT(&pump_controllers);
 
     for(RGBController* ctrl : detected)
     {
@@ -49,12 +57,57 @@ void CorsairCapellixXTPlugin::Load(ResourceManagerInterface* rm)
 
 QWidget* CorsairCapellixXTPlugin::GetWidget()
 {
-    /*-----------------------------------------------------------------*\
-    | OpenRGB always passes this widget to OpenRGBPluginContainer which |
-    | calls setParent() on it, so returning nullptr causes a crash.     |
-    | Return an empty widget instead.                                   |
-    \*-----------------------------------------------------------------*/
-    return new QWidget();
+    QWidget*     widget = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(widget);
+
+    QLabel* title = new QLabel("Pump Speed Mode");
+    QFont   tfont = title->font();
+    tfont.setBold(true);
+    title->setFont(tfont);
+    layout->addWidget(title);
+
+    QLabel* desc = new QLabel(
+        "Controls the AIO pump and radiator fans together. Auto follows the "
+        "liquid temperature (quiet at idle, ramps up under sustained load). "
+        "Silent / Quiet / Balanced / Performance hold fixed speeds. Fans never "
+        "drop below ~300 rpm. The choice is saved and restored automatically.");
+    desc->setWordWrap(true);
+    layout->addWidget(desc);
+
+    struct ModeDef { const char* label; int mode; };
+    const ModeDef defs[] =
+    {
+        { "Auto (liquid-temp curve) — ~1130 rpm idle, ramps to full", PUMP_MODE_AUTO        },
+        { "Silent (fixed, ~1130 rpm)",                                PUMP_MODE_SILENT        },
+        { "Quiet — ~2150 rpm",                                        PUMP_MODE_QUIET       },
+        { "Balanced — ~2500 rpm",                                     PUMP_MODE_BALANCED    },
+        { "Performance — ~2800 rpm",                                  PUMP_MODE_PERFORMANCE },
+    };
+
+    int current = pump_controllers.empty()
+                ? PUMP_MODE_AUTO
+                : pump_controllers[0]->GetPumpMode();
+
+    QButtonGroup* group = new QButtonGroup(widget);
+    for(const ModeDef& d : defs)
+    {
+        QRadioButton* rb = new QRadioButton(QString::fromUtf8(d.label));
+        rb->setChecked(d.mode == current);
+        group->addButton(rb, d.mode);
+        layout->addWidget(rb);
+    }
+
+    QObject::connect(group, &QButtonGroup::idClicked,
+        [this](int mode)
+        {
+            for(CorsairCapellixXTController* c : pump_controllers)
+            {
+                c->SetPumpMode(mode);
+            }
+        });
+
+    layout->addStretch();
+    return widget;
 }
 
 QMenu* CorsairCapellixXTPlugin::GetTrayMenu()

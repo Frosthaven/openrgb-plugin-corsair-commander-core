@@ -13,7 +13,8 @@
 |   0x0C32  Commander ST   (newer revision, 64-byte buffer)           |
 \*------------------------------------------------------------------*/
 
-std::vector<RGBController*> DetectCorsairCapellixXT()
+std::vector<RGBController*> DetectCorsairCapellixXT(
+    std::vector<CorsairCapellixXTController*>* raw_out)
 {
     std::vector<RGBController*> controllers;
 
@@ -46,6 +47,11 @@ std::vector<RGBController*> DetectCorsairCapellixXT()
                         new RGBController_CorsairCapellixXT(controller);
 
                     controllers.push_back(rgb);
+
+                    if(raw_out != nullptr)
+                    {
+                        raw_out->push_back(controller);
+                    }
                 }
             }
 
