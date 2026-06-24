@@ -61,19 +61,18 @@ CorsairCapellixXTController::CorsairCapellixXTController(hid_device* dev, const 
     \*-------------------------------------------------------------*/
     pump_curve =
     {
-        { 45.0f,  30 },     // idle: quiet (~1130 rpm) up to 45C
-        { 50.0f,  40 },
-        { 53.0f,  65 },
-        { 56.0f, 100 },     // sustained load: full
+        { 50.0f,  30 },     // idle / light use: Silent floor (~1130 rpm) up to 50C
+        { 53.0f,  50 },
+        { 56.0f,  75 },
+        { 58.0f, 100 },     // sustained load: full
     };
 
     fan_curve =
     {
-        { 42.0f,  FAN_DUTY_MIN },   // idle: floor (~300 rpm) up to 42C
-        { 46.0f,  35 },
-        { 50.0f,  60 },
-        { 53.0f,  85 },
-        { 56.0f, 100 },             // sustained load: full
+        { 50.0f,  FAN_DUTY_MIN },   // idle / light use: Silent floor (~560 rpm) up to 50C
+        { 53.0f,  45 },
+        { 56.0f,  75 },
+        { 58.0f, 100 },             // sustained load: full
     };
 
     LoadPumpMode();

@@ -13,7 +13,7 @@ found in Capellix and Capellix XT series AIO liquid CPU coolers.
 It does two things:
 
 1. **RGB** for the pump head and connected fans (replaces OpenRGB's built-in support).
-2. **Pump and fan speed control** through a simple **Cooling** tab, including a
+2. **Pump and fan speed control** through a simple **Commander Core Cooling** tab, including a
    temperature based Auto mode. This works on Capellix XT (firmware 2.x), which other
    Linux tools currently cannot set.
 
@@ -52,7 +52,7 @@ It does two things:
    ```
    If the device is not detected afterward, replug the internal USB header or reboot.
 
-5. **Restart OpenRGB.** The cooler appears in the device list, and a **Cooling** tab
+5. **Restart OpenRGB.** The cooler appears in the device list, and a **Commander Core Cooling** tab
    appears at the top.
 
 ## RGB
@@ -60,22 +60,22 @@ It does two things:
 The cooler shows up as a normal OpenRGB device. You can set the pump head and fan colors
 the same way as any other device (per LED, zones, effects, etc).
 
-## Cooling tab
+## Commander Core Cooling tab
 
-The **Cooling** tab lets you pick how the pump and radiator fans run. Your choice is
+The **Commander Core Cooling** tab lets you pick how the pump and radiator fans run. Your choice is
 saved and restored automatically. The default is **Auto**.
 
 | Mode | Pump | Radiator fans |
 |---|---|---|
 | **Disabled** | not controlled | not controlled |
-| **Auto** (default) | quiet at idle, ramps with coolant temp | quiet at idle, ramps with coolant temp |
+| **Auto** (default) | Silent floor at idle (~1130 rpm), ramps with coolant temp | Silent floor at idle (~560 rpm), ramps with coolant temp |
 | **Silent** | ~1130 rpm | ~560 rpm |
 | **Quiet** | ~2150 rpm | ~1040 rpm |
 | **Balanced** | ~2500 rpm | ~1550 rpm |
 | **Performance** | ~2800 rpm | ~2140 rpm |
 
-- **Auto** follows the AIO liquid temperature. It is quiet when idle and speeds up only
-  when the coolant warms under load.
+- **Auto** follows the AIO liquid temperature. At idle it sits at the Silent floor (its
+  quietest setting), and it speeds up only when the coolant warms under sustained load.
 - **Disabled** tells the plugin to stop sending speed commands, so the pump and fans run
   on their own or under another tool. (RGB still works.)
 - The fans are kept above their stall speed so they never stop unexpectedly, and the pump
@@ -85,7 +85,7 @@ saved and restored automatically. The default is **Auto**.
 
 The selected mode is also written to a small text file, so other tools on your system can
 read it and match it (for example to drive case fans on a separate controller). The
-Cooling tab shows the folder path and has a **Copy folder path** button.
+Commander Core Cooling tab shows the folder path and has a **Copy folder path** button.
 
 If you want to build a setup where all of your fans follow this same mode, see
 **[SYNCED-COOLING.md](SYNCED-COOLING.md)**.
@@ -95,7 +95,7 @@ If you want to build a setup where all of your fans follow this same mode, see
 - **Cooler not detected:** make sure Corsair iCUE (or any other Corsair tool) is not
   running, the built-in detector is unchecked (step 2 above), and the udev rule is
   installed (Linux). A replug or reboot helps after installing the rule.
-- **Cooling tab is missing:** the device was not detected, so there is nothing to control.
+- **Commander Core Cooling tab is missing:** the device was not detected, so there is nothing to control.
   See above.
 - **Pump suddenly loud / device vanished from OpenRGB:** the controller can re-enumerate
   and become invisible to OpenRGB. Unplug and replug the cooler's internal USB header, or

@@ -1,7 +1,7 @@
 # Building a synced cooling setup
 
-The Cooling tab saves your selected mode to a small text file. Any other tool on your
-system can read that file and match the mode, so every fan you own can follow one
+The Commander Core Cooling tab saves your selected mode to a small text file. Any other tool on
+your system can read that file and match the mode, so every fan you own can follow one
 selection even if the fans live on different controllers.
 
 This guide explains the file and walks through one real example: driving case fans on a
@@ -9,13 +9,13 @@ separate Corsair Commander Pro so they follow the same mode as the AIO.
 
 ## The mode file
 
-When you pick a mode in the Cooling tab, the plugin writes a single digit to:
+When you pick a mode in the Commander Core Cooling tab, the plugin writes a single digit to:
 
 ```
 ~/.config/OpenRGB/plugins/settings/CommanderCorePump.conf
 ```
 
-(The Cooling tab shows this path and has a Copy folder path button.)
+(The tab shows this path and has a Copy folder path button.)
 
 The digit is the mode:
 
@@ -35,8 +35,8 @@ match. That is the entire contract.
 
 A Commander Pro is supported by the Linux kernel `corsair-cpro` driver, which exposes the
 fans as standard hwmon PWM files (`/sys/class/hwmon/hwmonX/pwm1..6`, values 0 to 255).
-The small service below reads the mode file and sets those PWM values so the case fans
-follow Disabled / Auto / Silent / Quiet / Balanced / Performance too.
+The service below reads the mode file and sets those PWM values so the case fans follow
+Disabled / Auto / Silent / Quiet / Balanced / Performance too.
 
 > Adapt the PWM numbers to your own fans. Measure yours first: with the service stopped,
 > `echo <value> | sudo tee /sys/class/hwmon/hwmonX/pwm1` and read
@@ -49,15 +49,37 @@ Save as `/usr/local/bin/corsair-case-fans`:
 
 ```bash
 #!/usr/bin/env bash
-# Drive Commander Pro case fans to match the OpenRGB Cooling-tab mode.
+#
+# corsair-case-fans
+# -----------------
+# Drives Corsair Commander Pro case fans (via the kernel corsair-cpro hwmon PWM
+# files) so they follow the mode picked in the OpenRGB "Commander Core Cooling" tab.
+# The plugin writes the selected mode (0-5) to a small config file; this service
+# reads that same file every few seconds and sets the fan PWM to match.
+#
+#   Modes:  0 Auto   1 Silent   2 Quiet   3 Balanced   4 Performance   5 Disabled
+#
+# Runs as root because the hwmon pwm* files are owned by root.
+#
 set -u
 
-CFG="$HOME/.config/OpenRGB/plugins/settings/CommanderCorePump.conf"
-INTERVAL=3
-REASSERT_EVERY=20     # re-write even if unchanged every N ticks (~60s)
-PWM_FLOOR=40          # never below this (fans stall under ~pwm 30)
+# --- Settings ---------------------------------------------------------------
 
-find_hwmon() {        # $1 = driver name -> echoes hwmon path
+# Mode file written by the OpenRGB plugin. A root systemd service does NOT
+# inherit your $HOME, so set HOME= in the unit file (see step 2 below).
+CFG="$HOME/.config/OpenRGB/plugins/settings/CommanderCorePump.conf"
+
+INTERVAL=3            # seconds between checks
+REASSERT_EVERY=20     # re-write the PWM even if unchanged every N loops (~60s),
+                      # in case something else nudged the fans
+PWM_FLOOR=40          # lowest PWM we will ever set (0-255). Below ~30 these fans
+                      # stall; 40 keeps them spinning quietly (~600 rpm here)
+
+# --- Helpers ----------------------------------------------------------------
+
+# Find a hwmon folder by its driver name. hwmon numbers can change between
+# reboots, so always look the device up by name instead of hard-coding hwmonX.
+find_hwmon() {                        # $1 = driver name -> prints the hwmon path
     local h
     for h in /sys/class/hwmon/hwmon*; do
         if [ "$(cat "$h/name" 2>/dev/null)" = "$1" ]; then echo "$h"; return 0; fi
@@ -65,50 +87,66 @@ find_hwmon() {        # $1 = driver name -> echoes hwmon path
     return 1
 }
 
+# Read the CPU temperature in whole degrees C. Pick the sensor for YOUR CPU by
+# leaving one line active and commenting the other out:
+#   AMD Ryzen / Threadripper -> k10temp
+#   Intel Core               -> coretemp
 cpu_temp_c() {
     local h t
-    h=$(find_hwmon k10temp) || { echo 50; return; }   # AMD; use coretemp on Intel
-    t=$(cat "$h/temp1_input" 2>/dev/null)
+    h=$(find_hwmon k10temp)      # AMD Ryzen / Threadripper
+    # h=$(find_hwmon coretemp)   # Intel Core
+    if [ -z "${h:-}" ]; then echo 50; return; fi   # sensor missing -> assume 50C
+    t=$(cat "$h/temp1_input" 2>/dev/null)           # value is in millidegrees C
     if [ -n "$t" ]; then echo $(( t / 1000 )); else echo 50; fi
 }
 
-auto_pwm() {          # $1 = cpu temp C -> stepped curve
+# Auto-mode fan curve: CPU temperature -> PWM (0-255), as simple steps.
+# Tune to taste; higher numbers are louder but cooler.
+auto_pwm() {                          # $1 = cpu temp C
     local t=$1
-    if   [ "$t" -le 45 ]; then echo 40
+    if   [ "$t" -le 45 ]; then echo 40     # idle: quiet floor
     elif [ "$t" -le 55 ]; then echo 80
     elif [ "$t" -le 65 ]; then echo 140
     elif [ "$t" -le 75 ]; then echo 200
-    else echo 255; fi
+    else echo 255; fi                      # hot: full speed
 }
 
-last=-1
-tick=0
+# --- Main loop --------------------------------------------------------------
+
+last=-1               # last PWM written (-1 = unknown, forces the first write)
+tick=0                # loop counter for the periodic re-assert
 while true; do
+    # Locate the Commander Pro. If it is not present yet, wait and retry.
     cpro=$(find_hwmon corsaircpro) || { sleep "$INTERVAL"; continue; }
 
+    # Read the selected mode (first digit in the config file). Default to Auto.
     mode=0
     if [ -r "$CFG" ]; then
         m=$(tr -dc '0-9' < "$CFG" 2>/dev/null | head -c1)
         [ -n "$m" ] && mode=$m
     fi
 
-    # Disabled (5): leave the fans alone for external control.
+    # Disabled (5): do not touch the fans; leave them to run externally.
     if [ "$mode" = "5" ]; then
-        last=-1
+        last=-1                       # force a re-assert when re-enabled
         sleep "$INTERVAL"
         continue
     fi
 
+    # Map the mode to a target PWM. Auto uses the temperature curve above.
     case "$mode" in
-        1) pwm=40  ;;   # Silent
-        2) pwm=110 ;;   # Quiet
-        3) pwm=180 ;;   # Balanced
-        4) pwm=255 ;;   # Performance
+        1) pwm=40  ;;   # Silent      (~600 rpm here)
+        2) pwm=110 ;;   # Quiet       (~850 rpm)
+        3) pwm=180 ;;   # Balanced    (~1250 rpm)
+        4) pwm=255 ;;   # Performance (~1560 rpm)
         *) pwm=$(auto_pwm "$(cpu_temp_c)") ;;   # Auto (mode 0)
     esac
 
+    # Never below the stall floor.
     [ "$pwm" -lt "$PWM_FLOOR" ] && pwm=$PWM_FLOOR
 
+    # Only write when the value changed, plus a periodic re-assert. Keeping the
+    # device traffic low lets it play nicely with OpenRGB's RGB on the same hub.
     if [ "$pwm" != "$last" ] || [ "$tick" -ge "$REASSERT_EVERY" ]; then
         for n in 1 2 3 4 5 6; do echo "$pwm" > "$cpro/pwm$n" 2>/dev/null; done
         last=$pwm
@@ -120,17 +158,13 @@ while true; do
 done
 ```
 
-The mode file lives in your home folder but the PWM files are root owned, so run this as a
-system service. Replace `$HOME` with your actual home path in the unit (or set it via the
-unit), since a root service does not have your `$HOME`.
-
 ### 2. The service
 
 Save as `/etc/systemd/system/corsair-case-fans.service` (set the real home path):
 
 ```ini
 [Unit]
-Description=Corsair Commander Pro case fans follow the OpenRGB Cooling mode
+Description=Corsair Commander Pro case fans follow the OpenRGB Commander Core Cooling mode
 After=multi-user.target
 
 [Service]
@@ -154,8 +188,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now corsair-case-fans.service
 ```
 
-Now changing the mode in the Cooling tab moves the AIO pump and radiator fans immediately
-and the case fans within a few seconds.
+Now changing the mode in the Commander Core Cooling tab moves the AIO pump and radiator fans
+immediately and the case fans within a few seconds.
 
 ### Notes on coexistence
 

@@ -27,7 +27,7 @@ OpenRGBPluginInfo CorsairCapellixXTPlugin::GetPluginInfo()
     info.URL            = "https://github.com/Frosthaven/openrgb-plugin-corsair-commander-core";
     info.Icon.load(":/fan.svg");
 
-    info.Label          = "Cooling";
+    info.Label          = "Commander Core Cooling";
     info.Location       = OPENRGB_PLUGIN_LOCATION_TOP;
 
     return info;
@@ -66,7 +66,32 @@ QWidget* CorsairCapellixXTPlugin::GetWidget()
     QWidget*     widget = new QWidget();
     QVBoxLayout* layout = new QVBoxLayout(widget);
 
-    QLabel* title = new QLabel("Pump Speed Mode");
+    /*-----------------------------------------------------------------*\
+    | If nothing was detected, show a clear message instead of dead     |
+    | controls. OpenRGB always shows a loaded plugin's tab (it cannot   |
+    | be hidden), so we make the empty state explicit.                  |
+    \*-----------------------------------------------------------------*/
+    if(pump_controllers.empty())
+    {
+        QLabel* none = new QLabel(
+            "No Corsair Commander Core (Capellix / Capellix XT AIO) detected.\n\n"
+            "Connect the cooler, and make sure OpenRGB's built-in \"Corsair "
+            "Commander Core\" and \"Corsair Commander Core XT\" detectors are "
+            "unchecked in Settings > Supported Devices.");
+        none->setWordWrap(true);
+        layout->addWidget(none);
+        layout->addStretch();
+        return widget;
+    }
+
+    /*-----------------------------------------------------------------*\
+    | Title shows the actual detected device so the user knows which    |
+    | cooler this tab is controlling.                                   |
+    \*-----------------------------------------------------------------*/
+    QString devName = QString::fromStdString(pump_controllers[0]->GetDeviceName()).trimmed();
+    if(devName.isEmpty()) { devName = "Corsair Commander Core"; }
+
+    QLabel* title = new QLabel(devName + "  -  Pump & Fan Speed");
     QFont   tfont = title->font();
     tfont.setBold(true);
     title->setFont(tfont);
@@ -74,8 +99,9 @@ QWidget* CorsairCapellixXTPlugin::GetWidget()
 
     QLabel* desc = new QLabel(
         "Corsair Commander Core (Capellix AIO). Controls the pump and radiator "
-        "fans together. Auto follows the liquid temperature (quiet at idle, "
-        "ramps up under load). Silent, Quiet, Balanced and Performance hold "
+        "fans together. Auto follows the liquid temperature; at idle it runs "
+        "at the Silent floor and ramps up only under load. Silent, Quiet, "
+        "Balanced and Performance hold "
         "fixed speeds. Disabled stops managing them so they run on their own or "
         "under another tool. Fans never drop below their stall floor. The "
         "selected mode is saved to the config file shown below, so other tools "
@@ -119,7 +145,7 @@ QWidget* CorsairCapellixXTPlugin::GetWidget()
     /*-----------------------------------------------------------------*\
     | Config path: the selected mode is persisted here so other tools  |
     | read it and stay in sync. Shown + copyable in the pane so it is    |
-    | so it is easy to find for fan-speed configuration / scripting.     |
+    | easy to find for fan-speed configuration or scripting.            |
     \*-----------------------------------------------------------------*/
     const char* home = getenv("HOME");
     QString cfgDir = (home ? QString::fromUtf8(home) : QString())
