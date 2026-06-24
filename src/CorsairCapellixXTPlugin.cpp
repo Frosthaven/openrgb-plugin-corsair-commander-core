@@ -73,25 +73,25 @@ QWidget* CorsairCapellixXTPlugin::GetWidget()
     layout->addWidget(title);
 
     QLabel* desc = new QLabel(
-        "Corsair-specific: drives the Commander Core (Capellix AIO) pump and "
-        "radiator fans together. Auto follows liquid temperature (quiet idle, "
-        "ramps under load); Silent / Quiet / Balanced / Performance hold fixed "
-        "speeds; Disabled hands the pump and fans back to hardware / an external "
-        "tool. Fans never drop below their stall floor. Case fans on a Corsair "
-        "Commander Pro follow the same mode via the corsair-case-fans service. "
-        "The choice is saved and restored automatically.");
+        "Corsair Commander Core (Capellix AIO). Controls the pump and radiator "
+        "fans together. Auto follows the liquid temperature (quiet at idle, "
+        "ramps up under load). Silent, Quiet, Balanced and Performance hold "
+        "fixed speeds. Disabled stops managing them so they run on their own or "
+        "under another tool. Fans never drop below their stall floor. The "
+        "selected mode is saved to the config file shown below, so other tools "
+        "can read it and stay in sync.");
     desc->setWordWrap(true);
     layout->addWidget(desc);
 
     struct ModeDef { const char* label; int mode; };
     const ModeDef defs[] =
     {
-        { "Disabled (hands off; pump/fans run externally)",           PUMP_MODE_DISABLED },
-        { "Auto (liquid-temp curve) — ~1130 rpm idle, ramps to full", PUMP_MODE_AUTO        },
-        { "Silent (fixed, ~1130 rpm)",                                PUMP_MODE_SILENT        },
-        { "Quiet — ~2150 rpm",                                        PUMP_MODE_QUIET       },
-        { "Balanced — ~2500 rpm",                                     PUMP_MODE_BALANCED    },
-        { "Performance — ~2800 rpm",                                  PUMP_MODE_PERFORMANCE },
+        { "Disabled (hands off, pump and fans run externally)",           PUMP_MODE_DISABLED },
+        { "Auto (follows liquid temperature, ~1130 rpm idle)", PUMP_MODE_AUTO        },
+        { "Silent (~1130 rpm)",                                PUMP_MODE_SILENT        },
+        { "Quiet (~2150 rpm)",                                        PUMP_MODE_QUIET       },
+        { "Balanced (~2500 rpm)",                                     PUMP_MODE_BALANCED    },
+        { "Performance (~2800 rpm)",                                  PUMP_MODE_PERFORMANCE },
     };
 
     int current = pump_controllers.empty()
@@ -117,8 +117,8 @@ QWidget* CorsairCapellixXTPlugin::GetWidget()
         });
 
     /*-----------------------------------------------------------------*\
-    | Config path — the selected mode is persisted here, and the        |
-    | corsair-case-fans service reads this same file. Shown + copyable   |
+    | Config path: the selected mode is persisted here so other tools  |
+    | read it and stay in sync. Shown + copyable in the pane so it is    |
     | so it is easy to find for fan-speed configuration / scripting.     |
     \*-----------------------------------------------------------------*/
     const char* home = getenv("HOME");
@@ -126,7 +126,7 @@ QWidget* CorsairCapellixXTPlugin::GetWidget()
                    + "/.config/OpenRGB/plugins/settings/";
 
     QLabel* pathLbl = new QLabel(
-        "Mode is saved here (the case-fan service reads this file):");
+        "Mode is saved here. Other tools can read this file to stay in sync:");
     pathLbl->setWordWrap(true);
     layout->addWidget(pathLbl);
 
