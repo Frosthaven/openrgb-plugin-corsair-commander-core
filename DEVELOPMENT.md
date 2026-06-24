@@ -8,17 +8,15 @@ this; see [README.md](README.md) to install and use the released plugin.
 USB Vendor ID `0x1B1C` (Corsair). All variants speak the same USB HID command set; only
 the buffer size differs.
 
-| Controller | USB PID | HID buffer | Common products |
+| Controller | USB PID | HID buffer | Notes |
 |---|---|---|---|
-| Commander Core | `0x0C1C` | 96 bytes | Capellix AIOs (early revisions) |
-| Commander Core 2 | `0x0C32` | 64 bytes | Capellix XT AIOs (2022+) |
-| Commander Core 3 | `0x0C1D` | 96 bytes | |
-| Commander Core 4 | `0x0C3C` | 96 bytes | |
-| Commander Core 5 | `0x0C3D` | 96 bytes | |
-| Commander Core 6 | `0x0C3E` | 96 bytes | |
-| Commander Core XT | `0x0C2A` | 384 bytes | Standalone RGB controller |
+| Commander Core | `0x0C1C` | 96 bytes | Capellix AIO controller (early revisions) |
+| Commander Core 2 / ST | `0x0C32` | 64 bytes | Capellix XT AIO controller (2022+) |
+| Commander Core XT | `0x0C2A` | 384 bytes | Standalone fan/RGB hub, not an AIO (RGB only) |
 
-Speed control (pump and fans) uses the firmware 2.x software-speed path on the
+PIDs and buffer sizes were verified against OpenLinkHub's device list. Cooling
+control targets the AIO controllers (`0x0C1C`, `0x0C32`); the XT has no pump or
+liquid sensor. Speed control uses the firmware 2.x software-speed path on the
 `0x0C32` controller, which is where liquidctl currently fails to write.
 
 ## Building from source

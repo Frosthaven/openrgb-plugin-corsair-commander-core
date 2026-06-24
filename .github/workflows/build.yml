@@ -1,8 +1,7 @@
 name: Build Plugin
 
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
 
 env:
   OPENRGB_TAG: release_candidate_1.0rc2
@@ -194,12 +193,17 @@ jobs:
   release:
     name: Create Draft Release
     needs: [build-linux, build-windows, build-macos]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -218,9 +222,43 @@ jobs:
           done
           ls -la release/
 
+      - name: Generate release notes
+        id: notes
+        run: |
+          LAST_TAG=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ] && git rev-parse "$LAST_TAG" >/dev/null 2>&1; then
+            COMMITS=$(git log "$LAST_TAG"..HEAD --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" --)
+          else
+            COMMITS=$(git log --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" --)
+          fi
+          if [ -z "$COMMITS" ]; then
+            COMMITS="- No new commits since last release"
+          fi
+          EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "commits<<$EOF_MARKER" >> "$GITHUB_OUTPUT"
+          echo "$COMMITS" >> "$GITHUB_OUTPUT"
+          echo "$EOF_MARKER" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
-          generate_release_notes: true
+          tag_name: build-${{ github.run_number }}
+          name: Plugin Build ${{ github.run_number }}
           files: release/*
+          body: |
+            ${{ steps.notes.outputs.commits }}
+
+            ---
+
+            OpenRGB plugin for the Corsair Commander Core (Capellix / Capellix XT AIO).
+            Install instructions are in the [README](https://github.com/${{ github.repository }}/blob/main/README.md).
+
+            | Platform | Artifact |
+            |---|---|
+            | Linux x86_64 | `*-linux-x86_64.so` |
+            | Windows x86_64 | `*-windows-x86_64.dll` |
+            | macOS arm64 | `*-macos-arm64.dylib` |
+            | macOS x86_64 | `*-macos-x86_64.dylib` |

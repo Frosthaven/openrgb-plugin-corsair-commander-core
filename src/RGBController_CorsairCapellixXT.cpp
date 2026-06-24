@@ -25,22 +25,6 @@ RGBController_CorsairCapellixXT::RGBController_CorsairCapellixXT(CorsairCapellix
             name        = "Corsair Commander Core 2";
             description = "Corsair Commander Core 2 RGB Controller";
             break;
-        case COMMANDER_CORE3_PID:
-            name        = "Corsair Commander Core 3";
-            description = "Corsair Commander Core 3 RGB Controller";
-            break;
-        case COMMANDER_CORE4_PID:
-            name        = "Corsair Commander Core 4";
-            description = "Corsair Commander Core 4 RGB Controller";
-            break;
-        case COMMANDER_CORE5_PID:
-            name        = "Corsair Commander Core 5";
-            description = "Corsair Commander Core 5 RGB Controller";
-            break;
-        case COMMANDER_CORE6_PID:
-            name        = "Corsair Commander Core 6";
-            description = "Corsair Commander Core 6 RGB Controller";
-            break;
         case COMMANDER_CORE_XT_PID:
             name        = "Corsair Commander Core XT";
             description = "Corsair Commander Core XT RGB Controller";

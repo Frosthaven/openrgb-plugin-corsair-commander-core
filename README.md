@@ -1,10 +1,3 @@
-> **Warning**: This is an AI-generated project. The code was authored by an AI assistant
-> based on reverse-engineered protocol documentation from the
-> [OpenLinkHub](https://github.com/jurkovic-nikola/OpenLinkHub) and
-> [liquidctl](https://github.com/liquidctl/liquidctl) projects. It has not been
-> extensively tested across all hardware revisions or firmware versions. Use at your own
-> risk, and please verify behavior on your specific hardware before relying on it.
-
 # OpenRGB Plugin: Corsair Commander Core
 
 An [OpenRGB](https://openrgb.org/) plugin for the Corsair Commander Core controllers

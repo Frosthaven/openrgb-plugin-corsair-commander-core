@@ -9,28 +9,23 @@
 #include <chrono>
 #include <hidapi.h>
 
-// Commander Core USB identifiers
+// Commander Core USB identifiers (verified against OpenLinkHub's device list).
+//   0x0C1C / 0x0C32 are AIO controllers (Capellix / Capellix XT) - this plugin's
+//   cooling target. 0x0C2A is the standalone Commander Core XT hub (no pump /
+//   no liquid sensor), kept for RGB only.
 #define CORSAIR_VID                     0x1B1C
 #define COMMANDER_CORE_PID              0x0C1C  // Commander Core        (96-byte buffer)
 #define COMMANDER_CORE2_PID             0x0C32  // Commander Core 2 / ST (64-byte buffer)
-#define COMMANDER_CORE3_PID             0x0C1D  // Commander Core 3      (96-byte buffer)
-#define COMMANDER_CORE4_PID             0x0C3C  // Commander Core 4      (96-byte buffer)
-#define COMMANDER_CORE5_PID             0x0C3D  // Commander Core 5      (96-byte buffer)
-#define COMMANDER_CORE6_PID             0x0C3E  // Commander Core 6      (96-byte buffer)
-#define COMMANDER_CORE_XT_PID           0x0C2A  // Commander Core XT     (384-byte buffer)
+#define COMMANDER_CORE_XT_PID           0x0C2A  // Commander Core XT     (384-byte buffer, standalone)
 
 // Number of supported PIDs
 static const uint16_t COMMANDER_CORE_PIDS[] =
 {
     COMMANDER_CORE_PID,
     COMMANDER_CORE2_PID,
-    COMMANDER_CORE3_PID,
-    COMMANDER_CORE4_PID,
-    COMMANDER_CORE5_PID,
-    COMMANDER_CORE6_PID,
     COMMANDER_CORE_XT_PID
 };
-static const size_t COMMANDER_CORE_PID_COUNT = 7;
+static const size_t COMMANDER_CORE_PID_COUNT = 3;
 
 // Protocol constants
 #define CC_PROTOCOL_HEADER          0x08    // Fixed byte at position 1 of every write
