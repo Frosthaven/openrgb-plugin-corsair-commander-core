@@ -112,6 +112,7 @@ enum CorsairPumpMode
     PUMP_MODE_QUIET       = 2,   // fixed, ~iCUE "Quiet"    band
     PUMP_MODE_BALANCED    = 3,   // fixed, ~iCUE "Balanced" band
     PUMP_MODE_PERFORMANCE = 4,   // fixed, ~iCUE "Extreme"  band
+    PUMP_MODE_DISABLED    = 5,   // hands off — let the pump/fans run externally
 };
 
 #define PUMP_DUTY_SILENT            30      // ~1130 rpm (quietest safe flow)

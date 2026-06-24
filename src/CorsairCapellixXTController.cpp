@@ -685,6 +685,17 @@ uint8_t CorsairCapellixXTController::EvalCurve(const std::vector<CurvePoint>& cu
 
 void CorsairCapellixXTController::UpdatePumpFromCurve()
 {
+    if(pump_mode.load() == PUMP_MODE_DISABLED)
+    {
+        /*-------------------------------------------------------------*\
+        | Hands off: don't send any speed commands so the pump/fans run |
+        | on their own (or under an external tool). RGB is unaffected.  |
+        \*-------------------------------------------------------------*/
+        printf("[CommanderCore] mode=Disabled (pump/fans not managed)\n");
+        fflush(stdout);
+        return;
+    }
+
     float tempC = ReadLiquidTemp();
     if(tempC >= 0.0f)
     {
@@ -761,7 +772,7 @@ static std::string PumpModeConfigPath()
 
 void CorsairCapellixXTController::SetPumpMode(int mode)
 {
-    if(mode < PUMP_MODE_AUTO || mode > PUMP_MODE_PERFORMANCE)
+    if(mode < PUMP_MODE_AUTO || mode > PUMP_MODE_DISABLED)
     {
         mode = PUMP_MODE_AUTO;
     }
@@ -788,7 +799,7 @@ void CorsairCapellixXTController::LoadPumpMode()
         return;                 // no saved file yet -> stays default (Auto)
     }
     int m = PUMP_MODE_AUTO;
-    if(fscanf(f, "%d", &m) == 1 && m >= PUMP_MODE_AUTO && m <= PUMP_MODE_PERFORMANCE)
+    if(fscanf(f, "%d", &m) == 1 && m >= PUMP_MODE_AUTO && m <= PUMP_MODE_DISABLED)
     {
         pump_mode.store(m);
     }
