@@ -66,7 +66,14 @@ set -u
 # --- Settings ---------------------------------------------------------------
 
 # Mode file written by the OpenRGB plugin. A root systemd service does NOT
-# inherit your $HOME, so set HOME= in the unit file (see step 2 below).
+# inherit your $HOME, so set HOME= in the unit file (see step 2 below). If that
+# line is missing, fail with a clear message instead of dying on an unbound
+# variable and then crash-looping silently every RestartSec seconds.
+if [ -z "${HOME:-}" ]; then
+    echo "corsair-case-fans: \$HOME is not set. Add 'Environment=HOME=/home/<user>'" \
+         "to the [Service] section of the unit file (see step 2)." >&2
+    exit 1
+fi
 CFG="$HOME/.config/OpenRGB/plugins/settings/CommanderCorePump.conf"
 
 INTERVAL=3            # seconds between checks
